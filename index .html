@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Levermann"/>
+<meta name="theme-color" content="#050608"/>
+<title>Levermann ACWI</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23050608'/><text y='75' x='10' font-size='75'>📈</text></svg>"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:#050608;color:#e2e6f3;font-family:'DM Sans','Segoe UI',sans-serif;overscroll-behavior:none;}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:#181c28;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#3d7eff;cursor:pointer;}
+input[type=password],input[type=text]{width:100%;padding:11px 14px;background:#0a0c12;border:1px solid #181c28;border-radius:8px;color:#e2e6f3;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:#0a0c12}::-webkit-scrollbar-thumb{background:#3a3f58;border-radius:2px}
+details summary{list-style:none}details summary::-webkit-details-marker{display:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useMemo, useCallback, useEffect } = React;
+
+const STATIC_STOCK_DATA = [
+  { ticker:"AAPL", name:"Apple Inc.", sector:"Technologie", region:"🇺🇸", roe:1.6, ebitMargin:0.31, equityRatio:0.1, pe:31, pe5yAvg:28, analystBuyPct:65, earningsReactionPct:1.2, perf6m:-5.0, perf12m:8.0, epsGrowthYoY:8.0, analystTargetUpside:12.0, currentPrice:195, currency:"USD" },
+  { ticker:"MSFT", name:"Microsoft", sector:"Technologie", region:"🇺🇸", roe:0.38, ebitMargin:0.44, equityRatio:0.28, pe:35, pe5yAvg:32, analystBuyPct:90, earningsReactionPct:0.5, perf6m:-10.0, perf12m:5.0, epsGrowthYoY:15.0, analystTargetUpside:18.0, currentPrice:415, currency:"USD" },
+  { ticker:"NVDA", name:"NVIDIA Corp.", sector:"Technologie", region:"🇺🇸", roe:1.2, ebitMargin:0.55, equityRatio:0.32, pe:38, pe5yAvg:55, analystBuyPct:90, earningsReactionPct:5.0, perf6m:12.0, perf12m:65.0, epsGrowthYoY:150.0, analystTargetUpside:20.0, currentPrice:875, currency:"USD" },
+  { ticker:"AMZN", name:"Amazon.com", sector:"Konsum", region:"🇺🇸", roe:0.23, ebitMargin:0.1, equityRatio:0.3, pe:38, pe5yAvg:null, analystBuyPct:95, earningsReactionPct:2.0, perf6m:-8.0, perf12m:12.0, epsGrowthYoY:80.0, analystTargetUpside:22.0, currentPrice:195, currency:"USD" },
+  { ticker:"META", name:"Meta Platforms", sector:"Kommunikation", region:"🇺🇸", roe:0.38, ebitMargin:0.43, equityRatio:0.7, pe:24, pe5yAvg:22, analystBuyPct:88, earningsReactionPct:3.0, perf6m:-5.0, perf12m:18.0, epsGrowthYoY:45.0, analystTargetUpside:15.0, currentPrice:600, currency:"USD" },
+  { ticker:"GOOGL", name:"Alphabet Inc.", sector:"Kommunikation", region:"🇺🇸", roe:0.32, ebitMargin:0.3, equityRatio:0.55, pe:22, pe5yAvg:25, analystBuyPct:88, earningsReactionPct:2.0, perf6m:-8.0, perf12m:5.0, epsGrowthYoY:30.0, analystTargetUpside:18.0, currentPrice:168, currency:"USD" },
+  { ticker:"TSLA", name:"Tesla Inc.", sector:"Automobil", region:"🇺🇸", roe:0.15, ebitMargin:0.1, equityRatio:0.4, pe:85, pe5yAvg:null, analystBuyPct:65, earningsReactionPct:3.0, perf6m:-10.0, perf12m:15.0, epsGrowthYoY:40.0, analystTargetUpside:10.0, currentPrice:250, currency:"USD" },
+  { ticker:"AVGO", name:"Broadcom Inc.", sector:"Technologie", region:"🇺🇸", roe:0.35, ebitMargin:0.48, equityRatio:0.18, pe:30, pe5yAvg:25, analystBuyPct:80, earningsReactionPct:2.0, perf6m:5.0, perf12m:35.0, epsGrowthYoY:30.0, analystTargetUpside:12.0, currentPrice:175, currency:"USD" },
+  { ticker:"ORCL", name:"Oracle Corp.", sector:"Technologie", region:"🇺🇸", roe:null, ebitMargin:0.25, equityRatio:null, pe:35, pe5yAvg:28, analystBuyPct:72, earningsReactionPct:3.0, perf6m:5.0, perf12m:20.0, epsGrowthYoY:18.0, analystTargetUpside:8.0, currentPrice:140, currency:"USD" },
+  { ticker:"NOW", name:"ServiceNow", sector:"Technologie", region:"🇺🇸", roe:0.15, ebitMargin:0.22, equityRatio:0.4, pe:65, pe5yAvg:70, analystBuyPct:80, earningsReactionPct:4.0, perf6m:-5.0, perf12m:15.0, epsGrowthYoY:22.0, analystTargetUpside:14.0, currentPrice:900, currency:"USD" },
+  { ticker:"ADBE", name:"Adobe Inc.", sector:"Technologie", region:"🇺🇸", roe:0.4, ebitMargin:0.36, equityRatio:0.3, pe:28, pe5yAvg:35, analystBuyPct:70, earningsReactionPct:-1.0, perf6m:-15.0, perf12m:-5.0, epsGrowthYoY:8.0, analystTargetUpside:15.0, currentPrice:400, currency:"USD" },
+  { ticker:"CRM", name:"Salesforce", sector:"Technologie", region:"🇺🇸", roe:0.08, ebitMargin:0.2, equityRatio:0.5, pe:45, pe5yAvg:60, analystBuyPct:75, earningsReactionPct:2.0, perf6m:-8.0, perf12m:8.0, epsGrowthYoY:10.0, analystTargetUpside:12.0, currentPrice:285, currency:"USD" },
+  { ticker:"CSCO", name:"Cisco Systems", sector:"Technologie", region:"🇺🇸", roe:0.29, ebitMargin:0.29, equityRatio:0.4, pe:16, pe5yAvg:16, analystBuyPct:62, earningsReactionPct:-1.0, perf6m:-12.0, perf12m:-8.0, epsGrowthYoY:5.0, analystTargetUpside:8.0, currentPrice:52, currency:"USD" },
+  { ticker:"IBM", name:"IBM Corp.", sector:"Technologie", region:"🇺🇸", roe:null, ebitMargin:0.15, equityRatio:null, pe:21, pe5yAvg:20, analystBuyPct:55, earningsReactionPct:1.5, perf6m:8.0, perf12m:22.0, epsGrowthYoY:12.0, analystTargetUpside:6.0, currentPrice:230, currency:"USD" },
+  { ticker:"INTC", name:"Intel Corp.", sector:"Technologie", region:"🇺🇸", roe:0.01, ebitMargin:null, equityRatio:0.45, pe:null, pe5yAvg:20, analystBuyPct:45, earningsReactionPct:-8.0, perf6m:-40.0, perf12m:-45.0, epsGrowthYoY:-80.0, analystTargetUpside:-5.0, currentPrice:23, currency:"USD" },
+  { ticker:"AMD", name:"AMD", sector:"Technologie", region:"🇺🇸", roe:0.04, ebitMargin:0.05, equityRatio:0.6, pe:120, pe5yAvg:null, analystBuyPct:80, earningsReactionPct:4.0, perf6m:-12.0, perf12m:8.0, epsGrowthYoY:25.0, analystTargetUpside:28.0, currentPrice:130, currency:"USD" },
+  { ticker:"QCOM", name:"Qualcomm", sector:"Technologie", region:"🇺🇸", roe:0.4, ebitMargin:0.28, equityRatio:0.3, pe:17, pe5yAvg:18, analystBuyPct:65, earningsReactionPct:2.0, perf6m:-8.0, perf12m:5.0, epsGrowthYoY:15.0, analystTargetUpside:10.0, currentPrice:165, currency:"USD" },
+  { ticker:"TXN", name:"Texas Instruments", sector:"Technologie", region:"🇺🇸", roe:0.55, ebitMargin:0.38, equityRatio:0.35, pe:38, pe5yAvg:30, analystBuyPct:62, earningsReactionPct:0.5, perf6m:-10.0, perf12m:-5.0, epsGrowthYoY:-15.0, analystTargetUpside:8.0, currentPrice:175, currency:"USD" },
+  { ticker:"AMAT", name:"Applied Materials", sector:"Technologie", region:"🇺🇸", roe:0.5, ebitMargin:0.28, equityRatio:0.45, pe:22, pe5yAvg:20, analystBuyPct:75, earningsReactionPct:3.0, perf6m:-5.0, perf12m:10.0, epsGrowthYoY:12.0, analystTargetUpside:14.0, currentPrice:185, currency:"USD" },
+  { ticker:"NFLX", name:"Netflix Inc.", sector:"Medien", region:"🇺🇸", roe:0.28, ebitMargin:0.25, equityRatio:0.32, pe:38, pe5yAvg:40, analystBuyPct:68, earningsReactionPct:5.0, perf6m:5.0, perf12m:40.0, epsGrowthYoY:50.0, analystTargetUpside:10.0, currentPrice:900, currency:"USD" },
+  { ticker:"INTU", name:"Intuit Inc.", sector:"Technologie", region:"🇺🇸", roe:0.2, ebitMargin:0.25, equityRatio:0.38, pe:55, pe5yAvg:55, analystBuyPct:78, earningsReactionPct:2.0, perf6m:-8.0, perf12m:10.0, epsGrowthYoY:12.0, analystTargetUpside:12.0, currentPrice:660, currency:"USD" },
+  { ticker:"PANW", name:"Palo Alto Networks", sector:"Technologie", region:"🇺🇸", roe:0.1, ebitMargin:0.15, equityRatio:0.3, pe:55, pe5yAvg:null, analystBuyPct:82, earningsReactionPct:4.0, perf6m:5.0, perf12m:18.0, epsGrowthYoY:20.0, analystTargetUpside:12.0, currentPrice:310, currency:"USD" },
+  { ticker:"SNPS", name:"Synopsys Inc.", sector:"Technologie", region:"🇺🇸", roe:0.22, ebitMargin:0.22, equityRatio:0.55, pe:48, pe5yAvg:50, analystBuyPct:78, earningsReactionPct:1.0, perf6m:-15.0, perf12m:-5.0, epsGrowthYoY:8.0, analystTargetUpside:12.0, currentPrice:480, currency:"USD" },
+  { ticker:"WDAY", name:"Workday Inc.", sector:"Technologie", region:"🇺🇸", roe:0.07, ebitMargin:0.2, equityRatio:0.42, pe:45, pe5yAvg:null, analystBuyPct:72, earningsReactionPct:2.0, perf6m:-15.0, perf12m:5.0, epsGrowthYoY:12.0, analystTargetUpside:15.0, currentPrice:255, currency:"USD" },
+  { ticker:"UBER", name:"Uber Technologies", sector:"Transport", region:"🇺🇸", roe:0.12, ebitMargin:0.08, equityRatio:0.25, pe:35, pe5yAvg:null, analystBuyPct:82, earningsReactionPct:3.0, perf6m:-5.0, perf12m:15.0, epsGrowthYoY:25.0, analystTargetUpside:18.0, currentPrice:75, currency:"USD" },
+  { ticker:"JPM", name:"JPMorgan Chase", sector:"Finanzen", region:"🇺🇸", roe:0.17, ebitMargin:null, equityRatio:0.08, pe:13, pe5yAvg:13, analystBuyPct:72, earningsReactionPct:2.0, perf6m:-5.0, perf12m:18.0, epsGrowthYoY:15.0, analystTargetUpside:8.0, currentPrice:235, currency:"USD" },
+  { ticker:"V", name:"Visa Inc.", sector:"Finanzen", region:"🇺🇸", roe:0.5, ebitMargin:0.68, equityRatio:0.2, pe:29, pe5yAvg:32, analystBuyPct:82, earningsReactionPct:1.5, perf6m:-3.0, perf12m:12.0, epsGrowthYoY:12.0, analystTargetUpside:14.0, currentPrice:335, currency:"USD" },
+  { ticker:"MA", name:"Mastercard", sector:"Finanzen", region:"🇺🇸", roe:2.2, ebitMargin:0.57, equityRatio:0.15, pe:34, pe5yAvg:36, analystBuyPct:82, earningsReactionPct:1.0, perf6m:-2.0, perf12m:14.0, epsGrowthYoY:14.0, analystTargetUpside:12.0, currentPrice:535, currency:"USD" },
+  { ticker:"BAC", name:"Bank of America", sector:"Finanzen", region:"🇺🇸", roe:0.11, ebitMargin:null, equityRatio:0.08, pe:14, pe5yAvg:12, analystBuyPct:68, earningsReactionPct:1.0, perf6m:-5.0, perf12m:15.0, epsGrowthYoY:12.0, analystTargetUpside:8.0, currentPrice:42, currency:"USD" },
+  { ticker:"GS", name:"Goldman Sachs", sector:"Finanzen", region:"🇺🇸", roe:0.12, ebitMargin:null, equityRatio:0.08, pe:14, pe5yAvg:12, analystBuyPct:60, earningsReactionPct:3.0, perf6m:5.0, perf12m:32.0, epsGrowthYoY:20.0, analystTargetUpside:5.0, currentPrice:570, currency:"USD" },
+  { ticker:"BLK", name:"BlackRock", sector:"Finanzen", region:"🇺🇸", roe:0.14, ebitMargin:0.3, equityRatio:0.25, pe:21, pe5yAvg:20, analystBuyPct:70, earningsReactionPct:2.0, perf6m:2.0, perf12m:20.0, epsGrowthYoY:12.0, analystTargetUpside:10.0, currentPrice:960, currency:"USD" },
+  { ticker:"SPGI", name:"S&P Global", sector:"Finanzen", region:"🇺🇸", roe:0.8, ebitMargin:0.42, equityRatio:0.2, pe:40, pe5yAvg:38, analystBuyPct:75, earningsReactionPct:2.0, perf6m:0.0, perf12m:15.0, epsGrowthYoY:18.0, analystTargetUpside:12.0, currentPrice:500, currency:"USD" },
+  { ticker:"AXP", name:"American Express", sector:"Finanzen", region:"🇺🇸", roe:0.35, ebitMargin:0.2, equityRatio:0.1, pe:19, pe5yAvg:18, analystBuyPct:72, earningsReactionPct:1.5, perf6m:0.0, perf12m:22.0, epsGrowthYoY:18.0, analystTargetUpside:8.0, currentPrice:270, currency:"USD" },
+  { ticker:"WFC", name:"Wells Fargo", sector:"Finanzen", region:"🇺🇸", roe:0.12, ebitMargin:null, equityRatio:0.08, pe:13, pe5yAvg:12, analystBuyPct:60, earningsReactionPct:1.0, perf6m:5.0, perf12m:30.0, epsGrowthYoY:15.0, analystTargetUpside:10.0, currentPrice:72, currency:"USD" },
+  { ticker:"BRK-B", name:"Berkshire Hathaway", sector:"Finanzen", region:"🇺🇸", roe:0.14, ebitMargin:null, equityRatio:0.45, pe:22, pe5yAvg:null, analystBuyPct:58, earningsReactionPct:1.0, perf6m:5.0, perf12m:18.0, epsGrowthYoY:10.0, analystTargetUpside:5.0, currentPrice:450, currency:"USD" },
+  { ticker:"MS", name:"Morgan Stanley", sector:"Finanzen", region:"🇺🇸", roe:0.14, ebitMargin:null, equityRatio:0.08, pe:16, pe5yAvg:14, analystBuyPct:65, earningsReactionPct:2.0, perf6m:2.0, perf12m:25.0, epsGrowthYoY:15.0, analystTargetUpside:8.0, currentPrice:115, currency:"USD" },
+  { ticker:"LLY", name:"Eli Lilly", sector:"Pharma", region:"🇺🇸", roe:0.6, ebitMargin:0.38, equityRatio:0.25, pe:65, pe5yAvg:45, analystBuyPct:85, earningsReactionPct:4.0, perf6m:-10.0, perf12m:30.0, epsGrowthYoY:60.0, analystTargetUpside:15.0, currentPrice:750, currency:"USD" },
+  { ticker:"UNH", name:"UnitedHealth Group", sector:"Gesundheit", region:"🇺🇸", roe:0.28, ebitMargin:0.09, equityRatio:0.25, pe:22, pe5yAvg:22, analystBuyPct:72, earningsReactionPct:0.0, perf6m:-20.0, perf12m:-5.0, epsGrowthYoY:-8.0, analystTargetUpside:10.0, currentPrice:495, currency:"USD" },
+  { ticker:"JNJ", name:"Johnson & Johnson", sector:"Pharma", region:"🇺🇸", roe:0.22, ebitMargin:0.28, equityRatio:0.35, pe:16, pe5yAvg:17, analystBuyPct:55, earningsReactionPct:0.5, perf6m:-10.0, perf12m:2.0, epsGrowthYoY:5.0, analystTargetUpside:8.0, currentPrice:150, currency:"USD" },
+  { ticker:"ABBV", name:"AbbVie Inc.", sector:"Pharma", region:"🇺🇸", roe:null, ebitMargin:0.38, equityRatio:null, pe:19, pe5yAvg:18, analystBuyPct:68, earningsReactionPct:2.0, perf6m:-10.0, perf12m:10.0, epsGrowthYoY:12.0, analystTargetUpside:12.0, currentPrice:175, currency:"USD" },
+  { ticker:"MRK", name:"Merck & Co.", sector:"Pharma", region:"🇺🇸", roe:0.4, ebitMargin:0.35, equityRatio:0.38, pe:17, pe5yAvg:15, analystBuyPct:65, earningsReactionPct:1.5, perf6m:-15.0, perf12m:-8.0, epsGrowthYoY:10.0, analystTargetUpside:14.0, currentPrice:100, currency:"USD" },
+  { ticker:"PFE", name:"Pfizer Inc.", sector:"Pharma", region:"🇺🇸", roe:0.04, ebitMargin:0.12, equityRatio:0.35, pe:15, pe5yAvg:14, analystBuyPct:42, earningsReactionPct:-2.0, perf6m:-12.0, perf12m:-5.0, epsGrowthYoY:-40.0, analystTargetUpside:12.0, currentPrice:28, currency:"USD" },
+  { ticker:"AMGN", name:"Amgen Inc.", sector:"Pharma", region:"🇺🇸", roe:0.8, ebitMargin:0.4, equityRatio:null, pe:18, pe5yAvg:18, analystBuyPct:60, earningsReactionPct:1.0, perf6m:-10.0, perf12m:5.0, epsGrowthYoY:10.0, analystTargetUpside:12.0, currentPrice:285, currency:"USD" },
+  { ticker:"GILD", name:"Gilead Sciences", sector:"Pharma", region:"🇺🇸", roe:0.25, ebitMargin:0.35, equityRatio:0.4, pe:14, pe5yAvg:15, analystBuyPct:55, earningsReactionPct:2.0, perf6m:5.0, perf12m:15.0, epsGrowthYoY:12.0, analystTargetUpside:12.0, currentPrice:88, currency:"USD" },
+  { ticker:"WMT", name:"Walmart Inc.", sector:"Handel", region:"🇺🇸", roe:0.18, ebitMargin:0.05, equityRatio:0.28, pe:38, pe5yAvg:30, analystBuyPct:80, earningsReactionPct:2.0, perf6m:5.0, perf12m:30.0, epsGrowthYoY:15.0, analystTargetUpside:8.0, currentPrice:96, currency:"USD" },
+  { ticker:"COST", name:"Costco Wholesale", sector:"Handel", region:"🇺🇸", roe:0.32, ebitMargin:0.06, equityRatio:0.3, pe:52, pe5yAvg:48, analystBuyPct:82, earningsReactionPct:1.5, perf6m:5.0, perf12m:25.0, epsGrowthYoY:12.0, analystTargetUpside:6.0, currentPrice:900, currency:"USD" },
+  { ticker:"HD", name:"Home Depot", sector:"Handel", region:"🇺🇸", roe:null, ebitMargin:0.16, equityRatio:null, pe:24, pe5yAvg:24, analystBuyPct:72, earningsReactionPct:-0.5, perf6m:-10.0, perf12m:2.0, epsGrowthYoY:2.0, analystTargetUpside:10.0, currentPrice:360, currency:"USD" },
+  { ticker:"MCD", name:"McDonald's", sector:"Gastronomie", region:"🇺🇸", roe:null, ebitMargin:0.46, equityRatio:null, pe:25, pe5yAvg:25, analystBuyPct:70, earningsReactionPct:1.0, perf6m:-5.0, perf12m:5.0, epsGrowthYoY:8.0, analystTargetUpside:10.0, currentPrice:295, currency:"USD" },
+  { ticker:"KO", name:"Coca-Cola Co.", sector:"Konsum", region:"🇺🇸", roe:0.4, ebitMargin:0.28, equityRatio:0.22, pe:25, pe5yAvg:24, analystBuyPct:68, earningsReactionPct:0.5, perf6m:-5.0, perf12m:8.0, epsGrowthYoY:5.0, analystTargetUpside:8.0, currentPrice:70, currency:"USD" },
+  { ticker:"PEP", name:"PepsiCo Inc.", sector:"Konsum", region:"🇺🇸", roe:0.5, ebitMargin:0.16, equityRatio:0.18, pe:22, pe5yAvg:22, analystBuyPct:62, earningsReactionPct:-1.0, perf6m:-15.0, perf12m:-8.0, epsGrowthYoY:-2.0, analystTargetUpside:12.0, currentPrice:155, currency:"USD" },
+  { ticker:"PG", name:"Procter & Gamble", sector:"Konsum", region:"🇺🇸", roe:0.32, ebitMargin:0.22, equityRatio:0.22, pe:25, pe5yAvg:24, analystBuyPct:65, earningsReactionPct:0.5, perf6m:-8.0, perf12m:2.0, epsGrowthYoY:5.0, analystTargetUpside:8.0, currentPrice:165, currency:"USD" },
+  { ticker:"GE", name:"GE Aerospace", sector:"Industrie", region:"🇺🇸", roe:0.2, ebitMargin:0.12, equityRatio:0.25, pe:40, pe5yAvg:null, analystBuyPct:75, earningsReactionPct:5.0, perf6m:10.0, perf12m:55.0, epsGrowthYoY:45.0, analystTargetUpside:10.0, currentPrice:190, currency:"USD" },
+  { ticker:"CAT", name:"Caterpillar Inc.", sector:"Industrie", region:"🇺🇸", roe:0.55, ebitMargin:0.2, equityRatio:0.22, pe:18, pe5yAvg:18, analystBuyPct:65, earningsReactionPct:2.0, perf6m:-8.0, perf12m:5.0, epsGrowthYoY:8.0, analystTargetUpside:8.0, currentPrice:330, currency:"USD" },
+  { ticker:"RTX", name:"RTX Corp.", sector:"Rüstung", region:"🇺🇸", roe:0.08, ebitMargin:0.1, equityRatio:0.25, pe:32, pe5yAvg:null, analystBuyPct:70, earningsReactionPct:2.0, perf6m:5.0, perf12m:22.0, epsGrowthYoY:12.0, analystTargetUpside:10.0, currentPrice:130, currency:"USD" },
+  { ticker:"LMT", name:"Lockheed Martin", sector:"Rüstung", region:"🇺🇸", roe:null, ebitMargin:0.12, equityRatio:null, pe:18, pe5yAvg:17, analystBuyPct:60, earningsReactionPct:1.0, perf6m:5.0, perf12m:12.0, epsGrowthYoY:8.0, analystTargetUpside:8.0, currentPrice:440, currency:"USD" },
+  { ticker:"XOM", name:"Exxon Mobil", sector:"Energie", region:"🇺🇸", roe:0.15, ebitMargin:0.12, equityRatio:0.38, pe:14, pe5yAvg:15, analystBuyPct:62, earningsReactionPct:-1.0, perf6m:-10.0, perf12m:5.0, epsGrowthYoY:-8.0, analystTargetUpside:8.0, currentPrice:105, currency:"USD" },
+  { ticker:"CVX", name:"Chevron Corp.", sector:"Energie", region:"🇺🇸", roe:0.12, ebitMargin:0.1, equityRatio:0.4, pe:15, pe5yAvg:16, analystBuyPct:60, earningsReactionPct:-1.0, perf6m:-12.0, perf12m:2.0, epsGrowthYoY:-10.0, analystTargetUpside:10.0, currentPrice:145, currency:"USD" },
+  { ticker:"DE", name:"Deere & Company", sector:"Industrie", region:"🇺🇸", roe:0.35, ebitMargin:0.18, equityRatio:0.22, pe:12, pe5yAvg:14, analystBuyPct:62, earningsReactionPct:-2.0, perf6m:-15.0, perf12m:-8.0, epsGrowthYoY:-25.0, analystTargetUpside:10.0, currentPrice:380, currency:"USD" },
+  { ticker:"NKE", name:"Nike Inc.", sector:"Konsum", region:"🇺🇸", roe:0.25, ebitMargin:0.13, equityRatio:0.35, pe:22, pe5yAvg:28, analystBuyPct:55, earningsReactionPct:-2.0, perf6m:-25.0, perf12m:-20.0, epsGrowthYoY:-35.0, analystTargetUpside:15.0, currentPrice:72, currency:"USD" },
+  { ticker:"PM", name:"Philip Morris", sector:"Konsum", region:"🇺🇸", roe:null, ebitMargin:0.42, equityRatio:null, pe:18, pe5yAvg:17, analystBuyPct:60, earningsReactionPct:1.5, perf6m:10.0, perf12m:20.0, epsGrowthYoY:12.0, analystTargetUpside:8.0, currentPrice:130, currency:"USD" },
+  { ticker:"TMO", name:"Thermo Fisher", sector:"Gesundheit", region:"🇺🇸", roe:0.14, ebitMargin:0.19, equityRatio:0.35, pe:28, pe5yAvg:30, analystBuyPct:72, earningsReactionPct:0.5, perf6m:-12.0, perf12m:-5.0, epsGrowthYoY:-8.0, analystTargetUpside:15.0, currentPrice:480, currency:"USD" },
+  { ticker:"ISRG", name:"Intuitive Surgical", sector:"Medizin", region:"🇺🇸", roe:0.18, ebitMargin:0.28, equityRatio:0.7, pe:60, pe5yAvg:55, analystBuyPct:80, earningsReactionPct:3.0, perf6m:10.0, perf12m:25.0, epsGrowthYoY:20.0, analystTargetUpside:8.0, currentPrice:490, currency:"USD" },
+  { ticker:"VRTX", name:"Vertex Pharma", sector:"Pharma", region:"🇺🇸", roe:0.25, ebitMargin:0.42, equityRatio:0.65, pe:30, pe5yAvg:28, analystBuyPct:78, earningsReactionPct:3.0, perf6m:5.0, perf12m:20.0, epsGrowthYoY:18.0, analystTargetUpside:12.0, currentPrice:490, currency:"USD" },
+  { ticker:"REGN", name:"Regeneron Pharma", sector:"Pharma", region:"🇺🇸", roe:0.18, ebitMargin:0.35, equityRatio:0.65, pe:22, pe5yAvg:20, analystBuyPct:72, earningsReactionPct:2.0, perf6m:-10.0, perf12m:0.0, epsGrowthYoY:5.0, analystTargetUpside:15.0, currentPrice:780, currency:"USD" },
+  { ticker:"ASML", name:"ASML Holding", sector:"Technologie", region:"🇳🇱", roe:0.55, ebitMargin:0.32, equityRatio:0.38, pe:32, pe5yAvg:30, analystBuyPct:80, earningsReactionPct:2.0, perf6m:-20.0, perf12m:-10.0, epsGrowthYoY:-15.0, analystTargetUpside:22.0, currentPrice:650, currency:"EUR" },
+  { ticker:"SAP.DE", name:"SAP SE", sector:"Technologie", region:"🇩🇪", roe:0.18, ebitMargin:0.22, equityRatio:0.55, pe:40, pe5yAvg:35, analystBuyPct:78, earningsReactionPct:4.0, perf6m:15.0, perf12m:35.0, epsGrowthYoY:25.0, analystTargetUpside:10.0, currentPrice:225, currency:"EUR" },
+  { ticker:"NVO", name:"Novo Nordisk", sector:"Pharma", region:"🇩🇰", roe:0.9, ebitMargin:0.45, equityRatio:0.38, pe:30, pe5yAvg:28, analystBuyPct:80, earningsReactionPct:-5.0, perf6m:-30.0, perf12m:-35.0, epsGrowthYoY:15.0, analystTargetUpside:20.0, currentPrice:90, currency:"EUR" },
+  { ticker:"AZN", name:"AstraZeneca", sector:"Pharma", region:"🇬🇧", roe:0.15, ebitMargin:0.2, equityRatio:0.38, pe:32, pe5yAvg:30, analystBuyPct:78, earningsReactionPct:2.0, perf6m:-5.0, perf12m:15.0, epsGrowthYoY:20.0, analystTargetUpside:14.0, currentPrice:125, currency:"GBP" },
+  { ticker:"SHEL", name:"Shell PLC", sector:"Energie", region:"🇬🇧", roe:0.12, ebitMargin:0.08, equityRatio:0.35, pe:10, pe5yAvg:11, analystBuyPct:58, earningsReactionPct:-1.0, perf6m:-8.0, perf12m:2.0, epsGrowthYoY:-5.0, analystTargetUpside:15.0, currentPrice:30, currency:"GBP" },
+  { ticker:"NESN.SW", name:"Nestlé SA", sector:"Konsum", region:"🇨🇭", roe:0.22, ebitMargin:0.17, equityRatio:0.32, pe:19, pe5yAvg:22, analystBuyPct:58, earningsReactionPct:-1.0, perf6m:-15.0, perf12m:-10.0, epsGrowthYoY:-10.0, analystTargetUpside:12.0, currentPrice:82, currency:"CHF" },
+  { ticker:"NOVN.SW", name:"Novartis AG", sector:"Pharma", region:"🇨🇭", roe:0.18, ebitMargin:0.28, equityRatio:0.4, pe:16, pe5yAvg:17, analystBuyPct:65, earningsReactionPct:1.5, perf6m:5.0, perf12m:15.0, epsGrowthYoY:12.0, analystTargetUpside:10.0, currentPrice:96, currency:"CHF" },
+  { ticker:"ROG.SW", name:"Roche Holding", sector:"Pharma", region:"🇨🇭", roe:0.3, ebitMargin:0.3, equityRatio:0.38, pe:16, pe5yAvg:18, analystBuyPct:58, earningsReactionPct:0.5, perf6m:-12.0, perf12m:-8.0, epsGrowthYoY:-5.0, analystTargetUpside:14.0, currentPrice:240, currency:"CHF" },
+  { ticker:"HSBA.L", name:"HSBC Holdings", sector:"Finanzen", region:"🇬🇧", roe:0.12, ebitMargin:null, equityRatio:0.06, pe:10, pe5yAvg:10, analystBuyPct:58, earningsReactionPct:2.0, perf6m:2.0, perf12m:18.0, epsGrowthYoY:10.0, analystTargetUpside:8.0, currentPrice:8, currency:"GBP" },
+  { ticker:"ALV.DE", name:"Allianz SE", sector:"Versicherung", region:"🇩🇪", roe:0.13, ebitMargin:null, equityRatio:0.08, pe:11, pe5yAvg:11, analystBuyPct:65, earningsReactionPct:2.0, perf6m:5.0, perf12m:22.0, epsGrowthYoY:12.0, analystTargetUpside:8.0, currentPrice:330, currency:"EUR" },
+  { ticker:"SIE.DE", name:"Siemens AG", sector:"Industrie", region:"🇩🇪", roe:0.17, ebitMargin:0.14, equityRatio:0.3, pe:22, pe5yAvg:20, analystBuyPct:70, earningsReactionPct:2.0, perf6m:0.0, perf12m:15.0, epsGrowthYoY:10.0, analystTargetUpside:10.0, currentPrice:195, currency:"EUR" },
+  { ticker:"MC.PA", name:"LVMH", sector:"Luxus", region:"🇫🇷", roe:0.22, ebitMargin:0.26, equityRatio:0.42, pe:22, pe5yAvg:22, analystBuyPct:65, earningsReactionPct:-2.0, perf6m:-20.0, perf12m:-15.0, epsGrowthYoY:-15.0, analystTargetUpside:18.0, currentPrice:590, currency:"EUR" },
+  { ticker:"AIR.PA", name:"Airbus SE", sector:"Luftfahrt", region:"🇫🇷", roe:0.55, ebitMargin:0.06, equityRatio:0.2, pe:32, pe5yAvg:30, analystBuyPct:72, earningsReactionPct:2.0, perf6m:-5.0, perf12m:10.0, epsGrowthYoY:12.0, analystTargetUpside:12.0, currentPrice:165, currency:"EUR" },
+  { ticker:"OR.PA", name:"L'Oreal SA", sector:"Konsumgüter", region:"🇫🇷", roe:0.2, ebitMargin:0.2, equityRatio:0.55, pe:32, pe5yAvg:32, analystBuyPct:68, earningsReactionPct:-1.0, perf6m:-15.0, perf12m:-8.0, epsGrowthYoY:5.0, analystTargetUpside:12.0, currentPrice:390, currency:"EUR" },
+  { ticker:"CFR.SW", name:"Richemont SA", sector:"Luxus", region:"🇨🇭", roe:0.18, ebitMargin:0.2, equityRatio:0.5, pe:20, pe5yAvg:22, analystBuyPct:65, earningsReactionPct:-1.0, perf6m:-10.0, perf12m:-5.0, epsGrowthYoY:5.0, analystTargetUpside:14.0, currentPrice:140, currency:"CHF" },
+  { ticker:"BMW.DE", name:"BMW AG", sector:"Automobil", region:"🇩🇪", roe:0.12, ebitMargin:0.08, equityRatio:0.22, pe:8, pe5yAvg:9, analystBuyPct:55, earningsReactionPct:-2.0, perf6m:-15.0, perf12m:-12.0, epsGrowthYoY:-15.0, analystTargetUpside:18.0, currentPrice:75, currency:"EUR" },
+  { ticker:"MBG.DE", name:"Mercedes-Benz", sector:"Automobil", region:"🇩🇪", roe:0.1, ebitMargin:0.08, equityRatio:0.22, pe:6, pe5yAvg:8, analystBuyPct:48, earningsReactionPct:-3.0, perf6m:-20.0, perf12m:-18.0, epsGrowthYoY:-20.0, analystTargetUpside:22.0, currentPrice:58, currency:"EUR" },
+  { ticker:"BAS.DE", name:"BASF SE", sector:"Chemie", region:"🇩🇪", roe:0.06, ebitMargin:0.06, equityRatio:0.35, pe:16, pe5yAvg:18, analystBuyPct:42, earningsReactionPct:-1.0, perf6m:-10.0, perf12m:0.0, epsGrowthYoY:-5.0, analystTargetUpside:15.0, currentPrice:45, currency:"EUR" },
+  { ticker:"BAYN.DE", name:"Bayer AG", sector:"Pharma", region:"🇩🇪", roe:0.02, ebitMargin:0.12, equityRatio:0.28, pe:null, pe5yAvg:14, analystBuyPct:30, earningsReactionPct:-3.0, perf6m:-30.0, perf12m:-45.0, epsGrowthYoY:-80.0, analystTargetUpside:40.0, currentPrice:18, currency:"EUR" },
+  { ticker:"MUV2.DE", name:"Munich Re", sector:"Versicherung", region:"🇩🇪", roe:0.14, ebitMargin:null, equityRatio:0.07, pe:13, pe5yAvg:12, analystBuyPct:65, earningsReactionPct:2.0, perf6m:10.0, perf12m:28.0, epsGrowthYoY:15.0, analystTargetUpside:6.0, currentPrice:520, currency:"EUR" },
+  { ticker:"RHM.DE", name:"Rheinmetall AG", sector:"Rüstung", region:"🇩🇪", roe:0.2, ebitMargin:0.1, equityRatio:0.25, pe:30, pe5yAvg:null, analystBuyPct:78, earningsReactionPct:5.0, perf6m:30.0, perf12m:95.0, epsGrowthYoY:60.0, analystTargetUpside:10.0, currentPrice:740, currency:"EUR" },
+  { ticker:"IFX.DE", name:"Infineon Tech.", sector:"Technologie", region:"🇩🇪", roe:0.14, ebitMargin:0.16, equityRatio:0.42, pe:20, pe5yAvg:22, analystBuyPct:65, earningsReactionPct:-2.0, perf6m:-15.0, perf12m:-18.0, epsGrowthYoY:-20.0, analystTargetUpside:20.0, currentPrice:32, currency:"EUR" },
+  { ticker:"SAP", name:"SAP SE ADR", sector:"Technologie", region:"🇩🇪", roe:0.18, ebitMargin:0.22, equityRatio:0.55, pe:40, pe5yAvg:35, analystBuyPct:78, earningsReactionPct:4.0, perf6m:15.0, perf12m:35.0, epsGrowthYoY:25.0, analystTargetUpside:10.0, currentPrice:240, currency:"USD" },
+  { ticker:"UBS", name:"UBS Group AG", sector:"Finanzen", region:"🇨🇭", roe:0.1, ebitMargin:null, equityRatio:0.05, pe:12, pe5yAvg:11, analystBuyPct:62, earningsReactionPct:2.0, perf6m:5.0, perf12m:18.0, epsGrowthYoY:12.0, analystTargetUpside:8.0, currentPrice:28, currency:"CHF" },
+  { ticker:"ZURN.SW", name:"Zurich Insurance", sector:"Versicherung", region:"🇨🇭", roe:0.21, ebitMargin:null, equityRatio:0.12, pe:14, pe5yAvg:13, analystBuyPct:62, earningsReactionPct:1.5, perf6m:10.0, perf12m:20.0, epsGrowthYoY:10.0, analystTargetUpside:6.0, currentPrice:500, currency:"CHF" },
+  { ticker:"TM", name:"Toyota Motor", sector:"Automobil", region:"🇯🇵", roe:0.13, ebitMargin:0.08, equityRatio:0.32, pe:10, pe5yAvg:9, analystBuyPct:58, earningsReactionPct:1.5, perf6m:0.0, perf12m:8.0, epsGrowthYoY:8.0, analystTargetUpside:12.0, currentPrice:220, currency:"USD" },
+  { ticker:"SONY", name:"Sony Group", sector:"Technologie", region:"🇯🇵", roe:0.15, ebitMargin:0.1, equityRatio:0.28, pe:20, pe5yAvg:18, analystBuyPct:65, earningsReactionPct:1.0, perf6m:-5.0, perf12m:2.0, epsGrowthYoY:8.0, analystTargetUpside:12.0, currentPrice:22, currency:"USD" },
+  { ticker:"MUFG", name:"Mitsubishi UFJ", sector:"Finanzen", region:"🇯🇵", roe:0.08, ebitMargin:null, equityRatio:0.05, pe:9, pe5yAvg:9, analystBuyPct:55, earningsReactionPct:1.5, perf6m:8.0, perf12m:22.0, epsGrowthYoY:12.0, analystTargetUpside:8.0, currentPrice:14, currency:"USD" },
+  { ticker:"TSM", name:"TSMC", sector:"Technologie", region:"🇹🇼", roe:0.28, ebitMargin:0.42, equityRatio:0.58, pe:22, pe5yAvg:18, analystBuyPct:82, earningsReactionPct:4.0, perf6m:8.0, perf12m:50.0, epsGrowthYoY:35.0, analystTargetUpside:15.0, currentPrice:165, currency:"USD" },
+  { ticker:"BABA", name:"Alibaba Group", sector:"Technologie", region:"🇨🇳", roe:0.1, ebitMargin:0.14, equityRatio:0.48, pe:15, pe5yAvg:null, analystBuyPct:45, earningsReactionPct:3.0, perf6m:20.0, perf12m:10.0, epsGrowthYoY:15.0, analystTargetUpside:35.0, currentPrice:90, currency:"USD" },
+  { ticker:"TCEHY", name:"Tencent Holdings", sector:"Technologie", region:"🇨🇳", roe:0.2, ebitMargin:0.3, equityRatio:0.45, pe:20, pe5yAvg:18, analystBuyPct:65, earningsReactionPct:3.0, perf6m:30.0, perf12m:20.0, epsGrowthYoY:25.0, analystTargetUpside:15.0, currentPrice:50, currency:"USD" },
+  { ticker:"INFY", name:"Infosys Ltd.", sector:"Technologie", region:"🇮🇳", roe:0.32, ebitMargin:0.22, equityRatio:0.6, pe:22, pe5yAvg:24, analystBuyPct:58, earningsReactionPct:0.5, perf6m:5.0, perf12m:12.0, epsGrowthYoY:8.0, analystTargetUpside:10.0, currentPrice:20, currency:"USD" },
+  { ticker:"HDB", name:"HDFC Bank", sector:"Finanzen", region:"🇮🇳", roe:0.17, ebitMargin:null, equityRatio:0.09, pe:18, pe5yAvg:18, analystBuyPct:68, earningsReactionPct:1.0, perf6m:5.0, perf12m:10.0, epsGrowthYoY:15.0, analystTargetUpside:12.0, currentPrice:65, currency:"USD" },
+  { ticker:"BHP", name:"BHP Group", sector:"Rohstoffe", region:"🇦🇺", roe:0.18, ebitMargin:0.28, equityRatio:0.42, pe:12, pe5yAvg:12, analystBuyPct:58, earningsReactionPct:-2.0, perf6m:-12.0, perf12m:-5.0, epsGrowthYoY:-15.0, analystTargetUpside:14.0, currentPrice:55, currency:"USD" },
+  { ticker:"VALE", name:"Vale S.A.", sector:"Rohstoffe", region:"🇧🇷", roe:0.22, ebitMargin:0.35, equityRatio:0.38, pe:8, pe5yAvg:9, analystBuyPct:52, earningsReactionPct:-2.0, perf6m:-18.0, perf12m:-12.0, epsGrowthYoY:-10.0, analystTargetUpside:20.0, currentPrice:12, currency:"USD" },
+  { ticker:"PBR", name:"Petrobras", sector:"Energie", region:"🇧🇷", roe:0.28, ebitMargin:0.3, equityRatio:0.32, pe:5, pe5yAvg:5, analystBuyPct:52, earningsReactionPct:1.0, perf6m:-15.0, perf12m:-10.0, epsGrowthYoY:-15.0, analystTargetUpside:22.0, currentPrice:13, currency:"USD" },
+];
+
+const WKN = {
+  "AAPL":"865985","MSFT":"870747","NVDA":"918422","AMZN":"906866","META":"A1JWVX",
+  "GOOGL":"A14Y6F","TSLA":"A1CX3T","BRK-B":"900567","LLY":"858560","JPM":"850628",
+  "V":"A0NC7B","UNH":"869561","XOM":"852549","MA":"A0F602","AVGO":"A2JG9Z",
+  "JNJ":"853260","PG":"852062","HD":"866953","COST":"888351","MRK":"A0YD8Q",
+  "ABBV":"A1J84E","CVX":"852552","KO":"850663","ORCL":"871460","PEP":"851995",
+  "BAC":"858388","TMO":"A0JL9W","ACN":"A0YD9V","CSCO":"878841","MCD":"856958",
+  "WMT":"860853","DIS":"855686","IBM":"851399","GE":"851144","NOW":"A1JX7H",
+  "AMD":"863186","QCOM":"883121","PM":"A0NDB9","INTU":"886343","TXN":"852654",
+  "AMGN":"867900","GS":"920332","BLK":"928193","AXP":"819686","RTX":"A2PJL9",
+  "CAT":"858213","PFE":"852009","MS":"885836","NEE":"A1H81L","LMT":"894648",
+  "NFLX":"552484","UBER":"A2PHHG","ADBE":"871981","CRM":"A14181","INTC":"855654",
+  "AMAT":"865247","BKNG":"A2JEXP","GILD":"885823","ISRG":"A0MKDD",
+  "SAP.DE":"716460","ALV.DE":"840400","BMW.DE":"519000","MBG.DE":"710000",
+  "BAYN.DE":"575200","DTE.DE":"555750","MUV2.DE":"843002","BAS.DE":"515100",
+  "DBK.DE":"514000","SIE.DE":"723610","ADS.DE":"500340","IFX.DE":"623100",
+  "MRK.DE":"659990","RHM.DE":"703000","RWE.DE":"703712","ASML":"A1J4U4",
+  "NVO":"A1XA8R","AZN":"886455","SHEL":"A3CZBT","NESN.SW":"A0Q4DC",
+  "NOVN.SW":"904278","ROG.SW":"855167","UBS":"A12DFH","CFR.SW":"A1W5CV",
+  "ZURN.SW":"A0Q4WY","MC.PA":"853292","OR.PA":"853888","AIR.PA":"938914",
+  "BHP":"908101","TSM":"909800","BABA":"A117TB","TCEHY":"A1138D",
+  "INFY":"A0NECU","HDB":"A0F6TN","VALE":"897998","PBR":"896475",
+  "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6",
+};
+
+// ── Constants ─────────────────────────────────────────────────────
+const CACHE_TTL_MS    = 4 * 60 * 60 * 1000;
+const CONCURRENCY     = 2;    // iOS PWA: max 2 parallel — mehr triggert Rate Limit
+const BATCH_DELAY_MS  = 1200; // Pause zwischen Batches
+const MAX_RETRIES     = 2;
+const RETRY_DELAY_MS  = 3000;
+const FINANCE_SECTORS = ["Finanzen","Versicherung"];
+
+const C = {
+  bg:"#050608",surface:"#0a0c12",card:"#0f1119",border:"#181c28",
+  accent:"#3d7eff",accentGlow:"#3d7eff22",
+  green:"#00d97e",greenGlow:"#00d97e18",
+  yellow:"#f0b429",yellowGlow:"#f0b42918",
+  red:"#f03e3e",redGlow:"#f03e3e18",
+  muted:"#3a3f58",text:"#e2e6f3",subtext:"#636b8f",
+  mono:"'JetBrains Mono',monospace",sans:"'DM Sans','Segoe UI',sans-serif",
+};
+
+// ── Levermann Scoring Engine ───────────────────────────────────────
+function calcScore(d, sector) {
+  const isFin = FINANCE_SECTORS.includes(sector);
+  const ok = v => v !== null && v !== undefined && isFinite(v);
+  const crit = [];
+  function sc(id,name,val,disp,reason){ crit.push({id,name,score:val,value:disp,reasoning:reason}); }
+
+  const roe=d.roe, em=d.ebitMargin, eq=d.equityRatio;
+  const pe5=d.pe5yAvg, pe=d.pe, buy=d.analystBuyPct;
+  const qr=d.earningsReactionPct, p6=d.perf6m, p12=d.perf12m;
+  const eg=d.epsGrowthYoY, up=d.analystTargetUpside;
+
+  if(!ok(roe))         sc(1,"EK-Rendite",0,"n/v","Keine Daten");
+  else if(roe>0.20)    sc(1,"EK-Rendite",1,(roe*100).toFixed(1)+"%",">20%");
+  else if(roe>=0.10)   sc(1,"EK-Rendite",0,(roe*100).toFixed(1)+"%","10-20%");
+  else                 sc(1,"EK-Rendite",-1,(roe*100).toFixed(1)+"%","<10%");
+
+  if(isFin)            sc(2,"EBIT-Marge",0,"n/a","Finanzsektor");
+  else if(!ok(em))     sc(2,"EBIT-Marge",0,"n/v","Keine Daten");
+  else if(em>0.12)     sc(2,"EBIT-Marge",1,(em*100).toFixed(1)+"%",">12%");
+  else if(em>=0.06)    sc(2,"EBIT-Marge",0,(em*100).toFixed(1)+"%","6-12%");
+  else                 sc(2,"EBIT-Marge",-1,(em*100).toFixed(1)+"%","<6%");
+
+  if(!ok(eq))          sc(3,"EK-Quote",0,"n/v","Keine Daten");
+  else if(isFin){
+    if(eq>0.10)        sc(3,"EK-Quote",1,(eq*100).toFixed(1)+"%",">10% (Bank)");
+    else if(eq>=0.05)  sc(3,"EK-Quote",0,(eq*100).toFixed(1)+"%","5-10% (Bank)");
+    else               sc(3,"EK-Quote",-1,(eq*100).toFixed(1)+"%","<5% (Bank)");
+  } else {
+    if(eq>0.25)        sc(3,"EK-Quote",1,(eq*100).toFixed(1)+"%",">25%");
+    else if(eq>=0.15)  sc(3,"EK-Quote",0,(eq*100).toFixed(1)+"%","15-25%");
+    else               sc(3,"EK-Quote",-1,(eq*100).toFixed(1)+"%","<15%");
+  }
+
+  if(!ok(pe5)||pe5<=0) sc(4,"KGV 5 Jahre",0,"n/v","Keine Daten");
+  else if(pe5<12)      sc(4,"KGV 5 Jahre",1,pe5.toFixed(1),"<12");
+  else if(pe5<=16)     sc(4,"KGV 5 Jahre",0,pe5.toFixed(1),"12-16");
+  else                 sc(4,"KGV 5 Jahre",-1,pe5.toFixed(1),">16");
+
+  if(!ok(pe)||pe<=0)   sc(5,"KGV aktuell",0,"n/v","Keine Daten");
+  else if(pe<12)       sc(5,"KGV aktuell",1,pe.toFixed(1),"<12");
+  else if(pe<=16)      sc(5,"KGV aktuell",0,pe.toFixed(1),"12-16");
+  else                 sc(5,"KGV aktuell",-1,pe.toFixed(1),">16");
+
+  if(!ok(buy))         sc(6,"Analysten",0,"n/v","Keine Daten");
+  else if(buy>70)      sc(6,"Analysten",-1,buy.toFixed(0)+"%","Kontra: >70% bullisch");
+  else if(buy>=50)     sc(6,"Analysten",0,buy.toFixed(0)+"%","Gemischt");
+  else                 sc(6,"Analysten",1,buy.toFixed(0)+"%","Kontra: bearisch");
+
+  if(!ok(qr))          sc(7,"Quartalsreaktion",0,"n/v","Keine Daten");
+  else if(qr>1)        sc(7,"Quartalsreaktion",1,qr.toFixed(1)+"%","Positiv");
+  else if(qr>=-1)      sc(7,"Quartalsreaktion",0,qr.toFixed(1)+"%","Neutral");
+  else                 sc(7,"Quartalsreaktion",-1,qr.toFixed(1)+"%","Negativ");
+
+  sc(8,"Gewinnrevision",0,"n/v","Nur Finnhub-Modus");
+
+  if(!ok(p6))          sc(9,"Kurs 6M",0,"n/v","Keine Daten");
+  else if(p6>5)        sc(9,"Kurs 6M",1,(p6>0?"+":"")+p6.toFixed(1)+"%","Stark");
+  else if(p6>=-5)      sc(9,"Kurs 6M",0,(p6>0?"+":"")+p6.toFixed(1)+"%","Seitwaerts");
+  else                 sc(9,"Kurs 6M",-1,p6.toFixed(1)+"%","Schwach");
+
+  if(!ok(p12))         sc(10,"Kurs 1J",0,"n/v","Keine Daten");
+  else if(p12>5)       sc(10,"Kurs 1J",1,(p12>0?"+":"")+p12.toFixed(1)+"%","Stark");
+  else if(p12>=-5)     sc(10,"Kurs 1J",0,(p12>0?"+":"")+p12.toFixed(1)+"%","Seitwaerts");
+  else                 sc(10,"Kurs 1J",-1,p12.toFixed(1)+"%","Schwach");
+
+  if(!ok(p6)||!ok(p12)) sc(11,"Momentum",0,"n/v","Keine Daten");
+  else if(p6>p12)       sc(11,"Momentum",1,"6M>1J","Beschleunigend");
+  else                  sc(11,"Momentum",-1,"6M<=1J","Abbremsend");
+
+  if(!ok(eg))          sc(12,"Gewinnwachstum",0,"n/v","Keine Daten");
+  else if(eg>0)        sc(12,"Gewinnwachstum",1,(eg>0?"+":"")+eg.toFixed(1)+"%","Wachstum");
+  else if(eg===0)      sc(12,"Gewinnwachstum",0,"0%","Unveraendert");
+  else                 sc(12,"Gewinnwachstum",-1,eg.toFixed(1)+"%","Rueckgang");
+
+  if(!ok(up))          sc(13,"Kurspotenzial",0,"n/v","Keine Daten");
+  else if(up>15)       sc(13,"Kurspotenzial",1,(up>0?"+":"")+up.toFixed(1)+"%",">15%");
+  else if(up>=0)       sc(13,"Kurspotenzial",0,(up>0?"+":"")+up.toFixed(1)+"%","0-15%");
+  else                 sc(13,"Kurspotenzial",-1,up.toFixed(1)+"%","Negativ");
+
+  const total = crit.reduce((s,c)=>s+c.score,0);
+  const rec   = total>=4?"KAUFEN":total<=2?"VERKAUFEN":"HALTEN";
+  const comp  = Math.round(crit.filter(c=>c.value!=="n/v"&&c.value!=="n/a").length/13*100);
+  return {criteria:crit,totalScore:total,recommendation:rec,dataCompleteness:comp};
+}
+
+// ── Finnhub Direct Client ──────────────────────────────────────────
+// Works in deployed PWA — no sandbox. Finnhub CORS is enabled.
+const FH_CACHE = new Map();
+
+async function fhGet(path, key) {
+  const url = "https://finnhub.io/api/v1/"+path+"&token="+key;
+  const hit = FH_CACHE.get(url);
+  if(hit && Date.now()-hit.ts < CACHE_TTL_MS) return hit.data;
+
+  // Explicit CORS mode — required for iOS PWA standalone
+  let resp;
+  try {
+    resp = await fetch(url, { method:"GET", mode:"cors", credentials:"omit",
+      headers:{"Accept":"application/json"} });
+  } catch(netErr) {
+    // "Load failed" arrives here — give a clear message
+    throw new Error("Netzwerk: "+netErr.message+" — CORS oder Verbindung. Key korrekt?");
+  }
+
+  if(resp.status===401||resp.status===403)
+    throw new Error("API Key ungueltig ("+resp.status+") — Key auf finnhub.io pruefen");
+  if(resp.status===429)
+    throw new Error("Rate Limit (429) — 60 Sek. warten, dann erneut starten");
+  if(!resp.ok) throw new Error("Finnhub HTTP "+resp.status);
+
+  // Safely read text first — resp.json() wirft in Safari "pattern" error bei leerem Body
+  let text;
+  try { text = await resp.text(); } catch(e) { throw new Error("Response lesen: "+e.message); }
+
+  if(!text || text.trim()==="") return {}; // leere Antwort = keine Daten, kein Fehler
+
+  let data;
+  try { data = JSON.parse(text); } catch(e) {
+    throw new Error("JSON Fehler ("+text.slice(0,40)+")");
+  }
+
+  // Finnhub gibt {"error":"..."} bei ungueltigem Symbol — kein throw, einfach leeres Objekt
+  if(data && data.error) return {};
+
+  FH_CACHE.set(url,{data,ts:Date.now()});
+  return data;
+}
+
+async function fetchFinnhubStock(stock, key) {
+  const t = stock.ticker;
+  // Sequential requests — prevents iOS rate-limit and CORS issues
+  // that occur with Promise.all on the Finnhub free plan
+  const metrics = await fhGet("stock/metric?symbol="+t+"&metric=all",key);
+  await new Promise(r=>setTimeout(r,250));
+  const recs    = await fhGet("recommendation?symbol="+t,key);
+  await new Promise(r=>setTimeout(r,250));
+  const quote   = await fhGet("quote?symbol="+t,key);
+  await new Promise(r=>setTimeout(r,250));
+  const target  = await fhGet("price-target?symbol="+t,key);
+  const m = (metrics&&metrics.metric)||{};
+  const ok = v => v!==null&&v!==undefined&&isFinite(v)&&v!==0;
+
+  let roe = ok(m.roeTTM)?m.roeTTM/100:null;
+  if(roe!==null&&(roe>5||roe<-2)) roe=null;
+
+  let ebitMargin=null;
+  if(ok(m.ebitdMarginTTM)) ebitMargin=m.ebitdMarginTTM/100;
+  else if(ok(m.netProfitMarginTTM)) ebitMargin=m.netProfitMarginTTM/100;
+
+  let equityRatio=null;
+  if(ok(m.totalDebt2TotalEquityAnnual)&&m.totalDebt2TotalEquityAnnual>=0)
+    equityRatio=1/(1+m.totalDebt2TotalEquityAnnual);
+
+  let pe=(ok(m.peTTM)&&m.peTTM>0&&m.peTTM<2000)?m.peTTM:null;
+  let pe5yAvg=(ok(m.peBasicExclExtraTTM)&&m.peBasicExclExtraTTM>0)?m.peBasicExclExtraTTM:pe;
+
+  let analystBuyPct=null;
+  if(Array.isArray(recs)&&recs.length>0){
+    const r=recs[0];
+    const tot=(r.strongBuy||0)+(r.buy||0)+(r.hold||0)+(r.sell||0)+(r.strongSell||0);
+    if(tot>0) analystBuyPct=((r.strongBuy||0)+(r.buy||0))/tot*100;
+  }
+
+  const perf6m  = ok(m["26WeekPriceReturnDaily"])?m["26WeekPriceReturnDaily"]:null;
+  const perf12m = ok(m["52WeekPriceReturnDaily"])?m["52WeekPriceReturnDaily"]:null;
+  const epsGrowthYoY = ok(m.epsGrowthTTMYoy)?m.epsGrowthTTMYoy:null;
+
+  const currentPrice=(quote&&ok(quote.c)&&quote.c>0)?quote.c:null;
+  let analystTargetUpside=null;
+  if(target&&ok(target.targetMean)&&currentPrice){
+    analystTargetUpside=(target.targetMean-currentPrice)/currentPrice*100;
+    if(Math.abs(analystTargetUpside)>200) analystTargetUpside=null;
+  }
+
+  let earningsReactionPct=null;
+  if(ok(m.epsActual)&&ok(m.epsEstimate)&&m.epsEstimate!==0){
+    const s=(m.epsActual-m.epsEstimate)/Math.abs(m.epsEstimate)*100;
+    if(Math.abs(s)<=100) earningsReactionPct=s;
+  }
+
+  const currency=
+    t.endsWith(".SW")?"CHF":t.endsWith(".L")?"GBP":
+    [".PA",".DE",".MI",".MC",".AS",".BR",".HE",".ST",".CO"].some(s=>t.endsWith(s))?"EUR":
+    t.endsWith(".T")?"JPY":t.endsWith(".AX")?"AUD":t.endsWith(".KS")?"KRW":
+    t.endsWith(".TW")?"TWD":"USD";
+
+  return {roe,ebitMargin,equityRatio,pe,pe5yAvg,analystBuyPct,
+    earningsReactionPct,epsRevision4w:null,perf6m,perf12m,epsGrowthYoY,
+    analystTargetUpside,currentPrice,currency};
+}
+
+async function fetchWithRetry(stock, key){
+  let lastErr;
+  for(let i=0; i<=MAX_RETRIES; i++){
+    try { return await fetchFinnhubStock(stock, key); }
+    catch(e){
+      lastErr = e;
+      // Don't retry auth/rate errors
+      if(e.message.includes("401")||e.message.includes("403")||e.message.includes("429")) throw e;
+      if(i < MAX_RETRIES) await new Promise(r=>setTimeout(r, RETRY_DELAY_MS*(i+1)));
+    }
+  }
+  // Fallback: use static training data so stock still gets a score
+  const staticEntry = STATIC_STOCK_DATA.find(s=>s.ticker===stock.ticker);
+  if(staticEntry){
+    console.warn("Finnhub fehlgeschlagen fuer "+stock.ticker+", nutze statische Daten. Fehler: "+lastErr.message);
+    return {...staticEntry, _usedFallback:true};
+  }
+  throw lastErr;
+}
+
+// ── UI Helpers ─────────────────────────────────────────────────────
+const scoreCol = s => s>=4?C.green:s>=0?C.yellow:C.red;
+const recBg    = r => r==="KAUFEN"?C.greenGlow:r==="VERKAUFEN"?C.redGlow:C.yellowGlow;
+const recBdr   = r => r==="KAUFEN"?C.green+"55":r==="VERKAUFEN"?C.red+"55":C.yellow+"55";
+const recCol   = r => r==="KAUFEN"?C.green:r==="VERKAUFEN"?C.red:C.yellow;
+const fmtS     = s => (s>0?"+":"")+s;
+const EU_FLAGS = ["🇩🇪","🇫🇷","🇬🇧","🇨🇭","🇳🇱","🇮🇹","🇪🇸","🇫🇮","🇸🇪","🇩🇰","🇧🇪","🇦🇹","🇵🇹","🇳🇴"];
+const REGIONS  = ["Alle","🇺🇸 USA","🇪🇺 Europa","🇯🇵 Japan","🇨🇳 China","🇮🇳 Indien","🇦🇺 Ozeanien","Andere"];
+
+function regionMatch(s,f){
+  if(f==="Alle") return true;
+  if(f==="🇺🇸 USA") return s.region==="🇺🇸";
+  if(f==="🇪🇺 Europa") return EU_FLAGS.includes(s.region);
+  if(f==="🇯🇵 Japan") return s.region==="🇯🇵";
+  if(f==="🇨🇳 China") return s.region==="🇨🇳";
+  if(f==="🇮🇳 Indien") return s.region==="🇮🇳";
+  if(f==="🇦🇺 Ozeanien") return ["🇦🇺","🇳🇿"].includes(s.region);
+  return !["🇺🇸",...EU_FLAGS,"🇯🇵","🇨🇳","🇮🇳","🇦🇺","🇳🇿"].includes(s.region);
+}
+
+function exportCSV(rows,name){
+  const csv=rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}));
+  a.download=name; a.click();
+}
+
+// ── Components ─────────────────────────────────────────────────────
+function ScoreBar({score}){
+  return <div style={{width:"100%",height:3,background:C.border,borderRadius:2,overflow:"hidden"}}>
+    <div style={{height:"100%",width:((score+13)/26*100)+"%",background:scoreCol(score),borderRadius:2}}/>
+  </div>;
+}
+
+function Badge({rec}){
+  return <span style={{display:"inline-block",padding:"3px 9px",borderRadius:20,
+    background:recBg(rec),border:"1px solid "+recBdr(rec),
+    color:recCol(rec),fontSize:9,fontWeight:800,letterSpacing:0.8}}>{rec}</span>;
+}
+
+function Dots({criteria}){
+  return <div style={{display:"flex",gap:2,justifyContent:"center"}}>
+    {(criteria||[]).map(c=><div key={c.id} style={{
+      width:4,height:4,borderRadius:"50%",flexShrink:0,
+      background:c.score===1?C.green:c.score===-1?C.red:C.muted,
+    }} title={c.name+": "+(c.score>0?"+1":c.score<0?"-1":"0")}/>)}
+  </div>;
+}
+
+function CriteriaPanel({stock}){
+  return <div style={{background:"#07080d",borderBottom:"1px solid "+C.border,
+    padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:5}}>
+    {(stock.criteria||[]).map(c=>(
+      <div key={c.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"7px 9px",borderRadius:7,
+        background:c.score===1?C.greenGlow:c.score===-1?C.redGlow:"#ffffff04",
+        border:"1px solid "+(c.score===1?C.green+"33":c.score===-1?C.red+"33":C.border)}}>
+        <span style={{width:24,height:24,borderRadius:"50%",flexShrink:0,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:9,fontWeight:700,fontFamily:C.mono,
+          background:c.score===1?C.green+"22":c.score===-1?C.red+"22":C.muted+"22",
+          border:"1.5px solid "+(c.score===1?C.green:c.score===-1?C.red:C.muted),
+          color:c.score===1?C.green:c.score===-1?C.red:C.muted}}>
+          {c.score>0?"+1":c.score<0?"-1":"0"}
+        </span>
+        <div>
+          <div style={{fontSize:10,fontWeight:600}}>{c.name}</div>
+          <div style={{fontSize:10,color:C.accent,fontFamily:C.mono}}>{c.value}</div>
+          <div style={{fontSize:9,color:C.subtext,marginTop:1}}>{c.reasoning}</div>
+        </div>
+      </div>
+    ))}
+  </div>;
+}
+
+function ResultsTable({results,isFinnhub}){
+  const [exp,setExp] = useState(null);
+  const [reg,setReg] = useState("Alle");
+  const top30 = useMemo(()=>
+    results.filter(r=>regionMatch(r,reg)).sort((a,b)=>b.totalScore-a.totalScore).slice(0,30),
+    [results,reg]);
+  if(!results.length) return null;
+  return <div>
+    <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
+      {REGIONS.map(r=><button key={r} onClick={()=>setReg(r)} style={{
+        padding:"4px 11px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:C.sans,transition:"all .15s",
+        border:"1px solid "+(reg===r?C.accent:C.border),
+        background:reg===r?C.accentGlow:"transparent",
+        color:reg===r?C.accent:C.subtext}}>{r}</button>)}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"34px 1fr 62px 88px 52px 72px",
+      padding:"7px 13px",borderBottom:"1px solid "+C.border,fontSize:9,color:C.muted,
+      letterSpacing:1.5,textTransform:"uppercase",fontFamily:C.mono,
+      background:C.surface,borderRadius:"10px 10px 0 0"}}>
+      <span>#</span><span>Name</span>
+      <span style={{textAlign:"center"}}>Score</span>
+      <span style={{textAlign:"center"}}>Signal</span>
+      <span style={{textAlign:"center"}}>Daten</span>
+      <span style={{textAlign:"right"}}>Sektor</span>
+    </div>
+    {top30.map((s,i)=><div key={s.ticker}>
+      <div onClick={()=>setExp(exp===s.ticker?null:s.ticker)}
+        style={{display:"grid",gridTemplateColumns:"34px 1fr 62px 88px 52px 72px",
+          padding:"11px 13px",borderBottom:"1px solid "+C.border,cursor:"pointer",
+          background:exp===s.ticker?"#ffffff07":"transparent",transition:"background .12s"}}>
+        <span style={{fontFamily:C.mono,fontSize:12,fontWeight:700,color:i<3?C.accent:C.muted}}>{i+1}</span>
+        <div>
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <span>{s.region}</span>
+            <span style={{fontWeight:600,fontSize:13}}>{s.name}</span>
+          </div>
+          <div style={{fontSize:10,color:C.subtext,fontFamily:C.mono,marginTop:1}}>
+            {s.ticker}{s.currentPrice!=null&&<span style={{color:C.muted,marginLeft:6}}>{s.currency} {s.currentPrice.toFixed(2)}</span>}
+          </div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <span style={{fontFamily:C.mono,fontSize:17,fontWeight:700,color:scoreCol(s.totalScore),lineHeight:1}}>{fmtS(s.totalScore)}</span>
+          <div style={{marginTop:4}}><ScoreBar score={s.totalScore}/></div>
+        </div>
+        <div style={{textAlign:"center"}}><Badge rec={s.recommendation}/></div>
+        <div style={{textAlign:"center"}}>
+          <span style={{fontSize:10,fontFamily:C.mono,fontWeight:600,
+            color:(s.dataCompleteness||0)>=70?C.green:(s.dataCompleteness||0)>=40?C.yellow:C.red}}>
+            {s.dataCompleteness||0}%</span>
+        </div>
+        <div style={{textAlign:"right",fontSize:10,color:C.subtext}}>{s.sector}</div>
+      </div>
+      {exp===s.ticker&&<CriteriaPanel stock={s}/>}
+    </div>)}
+    <div style={{padding:"10px 13px",fontSize:10,color:C.muted,textAlign:"center",borderTop:"1px solid "+C.border,lineHeight:1.6}}>
+      {isFinnhub?"Echte Finnhub-Daten":"Daten: KI-Trainingswissen ~Anfang 2025"} · Deterministisches Levermann-Scoring · Keine Anlageberatung
+    </div>
+  </div>;
+}
+
+function ReportTab({results}){
+  const [sort,setSort]=useState("score");
+  const [filter,setFilter]=useState("ALLE");
+  const sorted=useMemo(()=>[...results]
+    .filter(r=>filter==="ALLE"||r.recommendation===filter)
+    .sort((a,b)=>sort==="name"?a.name.localeCompare(b.name):
+      sort==="rating"?["KAUFEN","HALTEN","VERKAUFEN"].indexOf(a.recommendation)-["KAUFEN","HALTEN","VERKAUFEN"].indexOf(b.recommendation):
+      b.totalScore-a.totalScore),[results,filter,sort]);
+
+  const stats=useMemo(()=>({
+    total:results.length,kaufen:results.filter(r=>r.recommendation==="KAUFEN").length,
+    halten:results.filter(r=>r.recommendation==="HALTEN").length,
+    vk:results.filter(r=>r.recommendation==="VERKAUFEN").length,
+    avg:results.length>0?(results.reduce((s,r)=>s+(r.totalScore||0),0)/results.length).toFixed(1):"—",
+  }),[results]);
+
+  if(!results.length) return <div style={{background:C.card,border:"1px dashed "+C.border,borderRadius:14,padding:"50px 24px",textAlign:"center"}}>
+    <div style={{fontSize:40,marginBottom:14}}>📋</div>
+    <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>Noch keine Ergebnisse</div>
+    <div style={{color:C.subtext,fontSize:13}}>Starte zuerst eine Analyse im Scanner-Tab.</div>
+  </div>;
+
+  return <div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+      {[{l:"Analysiert",v:stats.total,c:C.accent,i:"🔍"},{l:"Ø Score",v:stats.avg,c:C.text,i:"📊"},
+        {l:"KAUFEN",v:stats.kaufen,c:C.green,i:"▲"},{l:"HALTEN",v:stats.halten,c:C.yellow,i:"●"},
+        {l:"VERKAUFEN",v:stats.vk,c:C.red,i:"▼"}].map(s=>(
+        <div key={s.l} style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"13px 10px",textAlign:"center"}}>
+          <div style={{fontSize:16,marginBottom:4}}>{s.i}</div>
+          <div style={{fontFamily:C.mono,fontSize:20,fontWeight:700,color:s.c,lineHeight:1}}>{s.v}</div>
+          <div style={{fontSize:9,color:C.subtext,marginTop:4,letterSpacing:0.5,textTransform:"uppercase"}}>{s.l}</div>
+        </div>
+      ))}
+    </div>
+    <div style={{display:"flex",gap:7,marginBottom:13,flexWrap:"wrap",alignItems:"center"}}>
+      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+        {["ALLE","KAUFEN","HALTEN","VERKAUFEN"].map(f=>{
+          const col=f==="KAUFEN"?C.green:f==="VERKAUFEN"?C.red:f==="HALTEN"?C.yellow:C.accent;
+          const bg=f==="KAUFEN"?C.greenGlow:f==="VERKAUFEN"?C.redGlow:f==="HALTEN"?C.yellowGlow:C.accentGlow;
+          return <button key={f} onClick={()=>setFilter(f)} style={{
+            padding:"5px 12px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:C.sans,transition:"all .15s",
+            border:"1px solid "+(filter===f?col+"66":C.border),
+            background:filter===f?bg:"transparent",color:filter===f?col:C.subtext}}>{f}</button>;
+        })}
+      </div>
+      <div style={{display:"flex",gap:5,marginLeft:"auto"}}>
+        {[{id:"score",l:"Score"},{id:"name",l:"Name"},{id:"rating",l:"Rating"}].map(s=>(
+          <button key={s.id} onClick={()=>setSort(s.id)} style={{
+            padding:"5px 11px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:C.sans,
+            border:"1px solid "+(sort===s.id?C.accent+"66":C.border),
+            background:sort===s.id?C.accentGlow:"transparent",
+            color:sort===s.id?C.accent:C.subtext}}>{"↕ "+s.l}</button>
+        ))}
+        <button onClick={()=>{
+          const hdr=["Rang","Name","WKN","Ticker","Region","Sektor","Score","Rating","Daten%","Kurs","Waehrung"];
+          const rows=sorted.map((s,i)=>[i+1,s.name,WKN[s.ticker]||"—",s.ticker,s.region,s.sector,
+            fmtS(s.totalScore),s.recommendation,(s.dataCompleteness||0)+"%",
+            s.currentPrice!=null?s.currentPrice.toFixed(2):"—",s.currency||"—"]);
+          exportCSV([hdr,...rows],"levermann_"+new Date().toISOString().slice(0,10)+".csv");
+        }} style={{padding:"5px 13px",borderRadius:8,border:"1px solid "+C.accent+"44",
+          background:C.accentGlow,color:C.accent,fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:C.sans}}>
+          ⬇ CSV
+        </button>
+      </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"38px 1fr 78px 76px 48px 68px 88px",
+      padding:"7px 15px",borderBottom:"1px solid "+C.border,fontSize:9,color:C.muted,
+      letterSpacing:1.5,textTransform:"uppercase",fontFamily:C.mono,
+      background:C.surface,borderRadius:"10px 10px 0 0",position:"sticky",top:0,zIndex:10}}>
+      <span>#</span><span>Name</span>
+      <span style={{textAlign:"center"}}>WKN</span>
+      <span style={{textAlign:"center"}}>Score</span>
+      <span style={{textAlign:"center"}}>Daten</span>
+      <span style={{textAlign:"center"}}>Kurs</span>
+      <span style={{textAlign:"center"}}>Rating</span>
+    </div>
+    {sorted.map((s,i)=><div key={s.ticker} style={{
+      display:"grid",gridTemplateColumns:"38px 1fr 78px 76px 48px 68px 88px",
+      padding:"10px 15px",borderBottom:"1px solid "+C.border,
+      background:i%2===0?"transparent":"#0b0d15",alignItems:"center"}}>
+      <span style={{fontFamily:C.mono,fontSize:11,fontWeight:700,color:i<3?C.accent:C.muted}}>{i+1}</span>
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:5}}>
+          <span style={{fontSize:12}}>{s.region}</span>
+          <span style={{fontWeight:600,fontSize:13,lineHeight:1.2}}>{s.name}</span>
+        </div>
+        <div style={{fontSize:10,color:C.subtext,fontFamily:C.mono,marginTop:1}}>{s.ticker} · {s.sector}</div>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <span style={{fontFamily:C.mono,fontSize:11,fontWeight:600,
+          color:WKN[s.ticker]?C.text:C.muted,background:WKN[s.ticker]?C.border:"transparent",
+          padding:"2px 5px",borderRadius:4}}>{WKN[s.ticker]||"—"}</span>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <span style={{fontFamily:C.mono,fontSize:16,fontWeight:700,color:scoreCol(s.totalScore),display:"block",lineHeight:1}}>{fmtS(s.totalScore)}</span>
+        <div style={{marginTop:3,padding:"0 6px"}}><ScoreBar score={s.totalScore}/></div>
+        <div style={{marginTop:3}}><Dots criteria={s.criteria}/></div>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <span style={{fontSize:10,fontFamily:C.mono,fontWeight:600,
+          color:(s.dataCompleteness||0)>=70?C.green:(s.dataCompleteness||0)>=40?C.yellow:C.red}}>
+          {s.dataCompleteness||0}%</span>
+      </div>
+      <div style={{textAlign:"center"}}>
+        {s.currentPrice!=null?<div>
+          <span style={{fontFamily:C.mono,fontSize:12,fontWeight:600}}>{s.currentPrice.toFixed(2)}</span>
+          <div style={{fontSize:9,color:C.muted}}>{s.currency||""}</div>
+        </div>:<span style={{color:C.muted,fontSize:11}}>—</span>}
+      </div>
+      <div style={{textAlign:"center"}}><Badge rec={s.recommendation}/></div>
+    </div>)}
+    <div style={{padding:"11px 15px",fontSize:10,color:C.muted,textAlign:"center",borderTop:"1px solid "+C.border,lineHeight:1.6}}>
+      {sorted.length} Aktien · {new Date().toLocaleDateString("de-DE")} · Keine Anlageberatung · WKN ohne Gewaehr
+    </div>
+  </div>;
+}
+
+// ── Root App ────────────────────────────────────────────────────────
+function App(){
+  const [mode,       setMode]       = useState("static");
+  const [apiKey,     setApiKey]     = useState("");
+  const [count,      setCount]      = useState(50);
+  const [running,    setRunning]    = useState(false);
+  const [results,    setResults]    = useState([]);
+  const [errors,     setErrors]     = useState([]);
+  const [progress,   setProgress]   = useState(0);
+  const [curTicker,  setCurTicker]  = useState("");
+  const [done,       setDone]       = useState(false);
+  const [activeTab,  setActiveTab]  = useState("scanner");
+
+  const abortRef=useRef(false);
+  const resRef=useRef([]);
+  const errRef=useRef([]);
+
+  const maxN = Math.min(count, STATIC_STOCK_DATA.length);
+
+  function runStatic(){
+    const data = STATIC_STOCK_DATA.slice(0,maxN).map(s=>({...s,...calcScore(s,s.sector)}));
+    setResults(data); setErrors([]); setProgress(100); setDone(true);
+  }
+
+  async function runFinnhub(){
+    if(!apiKey.trim()) return;
+    abortRef.current=false; resRef.current=[]; errRef.current=[];
+    setRunning(true); setDone(false); setResults([]); setErrors([]); setProgress(0);
+    const batch=STATIC_STOCK_DATA.slice(0,maxN);
+    let done_=0;
+    for(let i=0; i<batch.length; i+=CONCURRENCY){
+      if(abortRef.current) break;
+      const chunk=batch.slice(i,i+CONCURRENCY);
+      setCurTicker(chunk.map(s=>s.ticker).join(", "));
+      const settled=await Promise.allSettled(chunk.map(async s=>{
+        const raw=await fetchWithRetry(s,apiKey);
+        return {...s,...raw,...calcScore(raw,s.sector)};
+      }));
+      settled.forEach((r,idx)=>{
+        if(r.status==="fulfilled"){resRef.current=[...resRef.current,r.value];setResults([...resRef.current]);}
+        else{errRef.current=[...errRef.current,{...chunk[idx],error:r.reason?.message||"Fehler"}];setErrors([...errRef.current]);}
+      });
+      done_+=chunk.length;
+      setProgress(Math.round(done_/batch.length*100));
+      // Pause between batches — prevents 429 rate limit on Finnhub free plan
+      if(i+CONCURRENCY < batch.length) await new Promise(r=>setTimeout(r, BATCH_DELAY_MS));
+    }
+    setRunning(false); setDone(true); setCurTicker("");
+  }
+
+  const TABS=[{id:"scanner",label:"⚡ Scanner"},{id:"report",label:"📋 Ergebnisse"+(results.length>0?" ("+results.length+")":"")}];
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:C.sans,
+      paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)"}}>
+      {/* Header */}
+      <div style={{background:C.surface,borderBottom:"1px solid "+C.border,padding:"20px 20px 16px"}}>
+        <div style={{maxWidth:860,margin:"0 auto"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <div style={{width:7,height:7,borderRadius:"50%",background:C.accent,boxShadow:"0 0 8px "+C.accent}}/>
+            <span style={{fontSize:9,letterSpacing:3,color:C.accent,fontFamily:C.mono,textTransform:"uppercase"}}>MSCI ACWI · Levermann v5.0</span>
+          </div>
+          <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-0.5}}>Top-30 <span style={{color:C.accent}}>Screening</span></h1>
+          <p style={{color:C.subtext,fontSize:12,marginTop:4}}>
+            {STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · Statisch + Finnhub Live
+          </p>
+        </div>
+      </div>
+      {/* Tabs */}
+      <div style={{background:C.surface,borderBottom:"1px solid "+C.border}}>
+        <div style={{maxWidth:860,margin:"0 auto",display:"flex"}}>
+          {TABS.map(t=><button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+            padding:"12px 20px",background:"transparent",border:"none",
+            borderBottom:"2px solid "+(activeTab===t.id?C.accent:"transparent"),
+            color:activeTab===t.id?C.accent:C.subtext,
+            fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:C.sans,transition:"all .15s"}}>{t.label}</button>)}
+        </div>
+      </div>
+
+      <div style={{maxWidth:860,margin:"0 auto",padding:"20px"}}>
+        {activeTab==="scanner"&&<>
+          {/* Mode */}
+          <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"18px",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>Modus wählen</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[{id:"static",icon:"⚡",title:"Statisch",sub:"Sofort · Kein Key nötig · ~Anfang 2025"},
+                {id:"finnhub",icon:"📡",title:"Finnhub Live",sub:"Echtdaten · Als PWA deployen · Key nötig"}
+              ].map(m=><div key={m.id} onClick={()=>setMode(m.id)} style={{
+                padding:"14px",borderRadius:10,cursor:"pointer",transition:"all .15s",
+                border:"2px solid "+(mode===m.id?C.accent:C.border),
+                background:mode===m.id?C.accentGlow:"transparent"}}>
+                <div style={{fontSize:20,marginBottom:6}}>{m.icon}</div>
+                <div style={{fontWeight:700,fontSize:13,color:mode===m.id?C.accent:C.text}}>{m.title}</div>
+                <div style={{fontSize:11,color:C.subtext,marginTop:3,lineHeight:1.5}}>{m.sub}</div>
+              </div>)}
+            </div>
+          </div>
+
+          {/* Finnhub Key */}
+          {mode==="finnhub"&&<div style={{background:C.card,border:"1px solid "+(!apiKey?C.accent+"55":C.green+"55"),borderRadius:14,padding:"18px",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>🔑 Finnhub API Key</div>
+            <input type="password" placeholder="Kostenloser Key von finnhub.io" value={apiKey}
+              onChange={e=>setApiKey(e.target.value)}/>
+            <div style={{fontSize:11,color:C.subtext,marginTop:8,lineHeight:1.6}}>
+              1. <a href="https://finnhub.io" style={{color:C.accent}}>finnhub.io</a> → Registrieren (kostenlos) → Dashboard → API Key kopieren<br/>
+              2. Key hier einfügen → Analyse starten<br/>
+              <span style={{color:C.yellow}}>⚠ Funktioniert nur in der deployed PWA, nicht im Claude Artifact-Preview.</span>
+            </div>
+          </div>}
+
+          {/* Slider + Button */}
+          <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"18px",marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12}}>
+              <div>
+                <span style={{fontSize:28,fontWeight:700,fontFamily:C.mono,color:C.accent}}>{maxN}</span>
+                <span style={{fontSize:13,color:C.subtext,marginLeft:6}}>Aktien</span>
+                {mode==="static"&&<span style={{fontSize:11,color:C.green,marginLeft:10}}>⚡ Sofort</span>}
+              </div>
+              {mode==="finnhub"&&<span style={{fontSize:11,color:C.subtext}}>~{Math.ceil(maxN/50)*4}-{Math.ceil(maxN/50)*7} Min.</span>}
+            </div>
+            <input type="range" min={10} max={STATIC_STOCK_DATA.length} step={10} value={count}
+              onChange={e=>setCount(+e.target.value)} disabled={running} style={{width:"100%"}}/>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
+              {[10,25,50,75,100].map(v=><span key={v} onClick={()=>!running&&setCount(v)} style={{
+                fontSize:9,fontFamily:C.mono,cursor:"pointer",
+                color:v===count?C.accent:C.muted,fontWeight:v===count?700:400}}>{v}</span>)}
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:14}}>
+              <button onClick={mode==="static"?runStatic:runFinnhub}
+                disabled={running||(mode==="finnhub"&&!apiKey)}
+                style={{flex:1,padding:"13px",borderRadius:10,border:"none",
+                  background:(running||(mode==="finnhub"&&!apiKey))?C.border:"linear-gradient(135deg,"+C.accent+",#2855c8)",
+                  color:(running||(mode==="finnhub"&&!apiKey))?C.muted:"#fff",
+                  fontWeight:700,fontSize:14,cursor:(running||(mode==="finnhub"&&!apiKey))?"not-allowed":"pointer",
+                  fontFamily:C.sans,transition:"all .2s"}}>
+                {running?("Analysiere... ("+progress+"%)"):done?"Erneut analysieren":(maxN+" Aktien analysieren")}
+              </button>
+              {running&&<button onClick={()=>{abortRef.current=true;setRunning(false);setDone(true);}} style={{
+                padding:"13px 18px",borderRadius:10,border:"1px solid "+C.red+"44",
+                background:C.redGlow,color:C.red,fontWeight:600,fontSize:13,
+                cursor:"pointer",fontFamily:C.sans}}>Stop</button>}
+            </div>
+          </div>
+
+          {/* Progress */}
+          {running&&<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"16px 18px",marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
+              <span style={{fontSize:12,color:C.subtext,animation:"pulse 1.5s infinite"}}>{"Analysiere: "+curTicker}</span>
+              <span style={{fontFamily:C.mono,fontSize:12,color:C.accent}}>{progress}%</span>
+            </div>
+            <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
+              <div style={{height:"100%",width:progress+"%",background:"linear-gradient(90deg,"+C.accent+","+C.green+")",borderRadius:3,transition:"width .3s"}}/>
+            </div>
+            {errors.length>0&&<details style={{marginTop:8}}>
+              <summary style={{fontSize:11,color:C.red,cursor:"pointer"}}>{errors.length} Fehler</summary>
+              <div style={{fontSize:10,color:C.subtext,marginTop:4,fontFamily:C.mono,lineHeight:1.8}}>
+                {errors.map(e=>e.ticker+": "+e.error).join(" | ")}
+              </div>
+            </details>}
+          </div>}
+
+          <ResultsTable results={results} isFinnhub={mode==="finnhub"}/>
+
+          {!running&&!done&&<div style={{background:C.card,border:"1px dashed "+C.border,borderRadius:14,padding:"50px 24px",textAlign:"center"}}>
+            <div style={{fontSize:42,marginBottom:14}}>🌍</div>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>MSCI ACWI Levermann-Screening</div>
+            <div style={{color:C.subtext,fontSize:13,lineHeight:1.8}}>
+              Modus wählen → Anzahl einstellen → Analyse starten<br/>
+              <span style={{fontSize:11,color:C.muted}}>{STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring</span>
+            </div>
+          </div>}
+        </>}
+
+        {activeTab==="report"&&<ReportTab results={results}/>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
