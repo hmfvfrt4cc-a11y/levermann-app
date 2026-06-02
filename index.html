@@ -413,10 +413,9 @@
   "ZURN.SW":"A0Q4WY","MC.PA":"853292","OR.PA":"853888","AIR.PA":"938914",
   "BHP":"908101","TSM":"909800","BABA":"A117TB","TCEHY":"A1138D",
   "INFY":"A0NECU","HDB":"A0F6TN","VALE":"897998","PBR":"896475",
-  "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6",
-};
+  "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6","PANW":"A1JZ0Q","SNPS":"883703","WDAY":"A1J39P","SPGI":"A2AHZ7","WFC":"857949","DE":"850866","NKE":"866993","REGN":"881535","HSBA.L":"923893","MUFG":"657892"};
 
-    const APP_VERSION = '6.2.0';
+    const APP_VERSION = '6.2.1';
     const APP_RELEASE_DATE = '2026-06-02';
     const ARCH_PROFILE = 'Single-File Client PWA · conservative Finnhub runtime';
     const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
@@ -591,7 +590,7 @@
       else add(13,'Kurspotenzial',-1,fmtPct(analystTargetUpside),'Negativ');
 
       const totalScore = criteria.filter(c => c.active).reduce((sum, c) => sum + c.score, 0);
-      const recommendation = totalScore >= 4 ? 'KAUFEN' : totalScore <= 2 ? 'VERKAUFEN' : 'HALTEN';
+      const recommendation = totalScore >= 4 ? 'KAUFEN' : totalScore <= 1 ? 'VERKAUFEN' : 'HALTEN';
       const applicable = criteria.filter(c => c.active && c.applicable).length;
       const available = criteria.filter(c => c.active && c.applicable && c.value !== 'n/v').length;
       const dataCompleteness = applicable ? Math.round((available / applicable) * 100) : 0;
@@ -668,11 +667,11 @@
         const t = stock.ticker;
         const metrics = await request(`stock/metric?symbol=${t}&metric=all`, key, signal);
         await sleep(REQUEST_GAP_MS);
-        const recs = await request(`recommendation?symbol=${t}`, key, signal);
+        const recs = await request(`stock/recommendation?symbol=${t}`, key, signal);
         await sleep(REQUEST_GAP_MS);
         const quote = await request(`quote?symbol=${t}`, key, signal);
         await sleep(REQUEST_GAP_MS);
-        const target = await request(`price-target?symbol=${t}`, key, signal);
+        const target = await request(`stock/price-target?symbol=${t}`, key, signal);
 
         const m = (metrics && metrics.metric) || {};
         const nz = (v) => v !== null && v !== undefined && Number.isFinite(v) && v !== 0;
@@ -680,11 +679,11 @@
         if (roe !== null && (roe > 5 || roe < -2)) roe = null;
         let ebitMargin = null;
         if (nz(m.ebitdMarginTTM)) ebitMargin = m.ebitdMarginTTM / 100;
-        else if (nz(m.netProfitMarginTTM)) ebitMargin = m.netProfitMarginTTM / 100;
+        
         let equityRatio = null;
         if (nz(m.totalDebt2TotalEquityAnnual) && m.totalDebt2TotalEquityAnnual >= 0) equityRatio = 1 / (1 + m.totalDebt2TotalEquityAnnual);
         let pe = (nz(m.peTTM) && m.peTTM > 0 && m.peTTM < 2000) ? m.peTTM : null;
-        let pe5yAvg = (nz(m.peBasicExclExtraTTM) && m.peBasicExclExtraTTM > 0) ? m.peBasicExclExtraTTM : pe;
+        let pe5yAvg = (nz(m.peBasicExclExtraTTM) && m.peBasicExclExtraTTM > 0) ? m.peBasicExclExtraTTM : null;
         let analystBuyPct = null;
         if (Array.isArray(recs) && recs.length > 0) {
           const r = recs[0];
@@ -1258,7 +1257,7 @@
               <div class="headline">Top-30 <span class="accent">Screening</span></div>
               <div class="subtitle">${STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · statisch + Finnhub Live · Apple-/iOS-inspirierte Oberfläche mit Quellen-Log und Score-Drilldown · ${APP_VERSION}</div>
               <div class="quick-badges">
-                <span class="quick-badge"> inspiriertes UI</span>
+                <span class="quick-badge">📱 inspiriertes UI</span>
                 <span class="quick-badge">🪵 Quellen-Log</span>
                 <span class="quick-badge">📈 Score-Drilldown</span>
                 <span class="quick-badge">Version ${APP_VERSION}</span>
