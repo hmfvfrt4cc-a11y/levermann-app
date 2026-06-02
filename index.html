@@ -140,11 +140,14 @@
     .tick-btn{font-family:var(--mono);font-size:10px;color:var(--muted)}
     .tick-btn.active{color:var(--accent);font-weight:700}
     .btn-row{display:flex;gap:10px;margin-top:16px}
-    .btn-primary,.btn-secondary,.btn-export{transition:all .15s ease}
+    .btn-primary,.btn-secondary,.btn-export,.btn-diagnose{transition:all .15s ease}
     .btn-primary{flex:1;padding:14px 16px;border-radius:18px;font-size:14px;font-weight:800;background:linear-gradient(180deg, #1394ff 0%, #007aff 100%);color:#fff;box-shadow:0 16px 28px rgba(10,132,255,.22), inset 0 1px 0 rgba(255,255,255,.35)}
     .btn-primary:disabled{background:linear-gradient(180deg, #b7c3d4 0%, #aab6c8 100%);color:#eff2f7;cursor:not-allowed;box-shadow:none}
     .btn-secondary{padding:14px 18px;border-radius:18px;font-size:13px;font-weight:800;background:rgba(255,69,58,.12);color:var(--red);border:1px solid rgba(255,69,58,.16)}
     .btn-export{padding:8px 12px;border-radius:14px;background:rgba(10,132,255,.10);border:1px solid rgba(10,132,255,.16);color:var(--accent);font-size:11px;font-weight:700}
+    .btn-diagnose{padding:14px 18px;border-radius:18px;font-size:13px;font-weight:800;background:rgba(10,132,255,.12);color:var(--accent);border:1px solid rgba(10,132,255,.18)}
+    .btn-diagnose:hover{transform:translateY(-1px)}
+    .banner-auth{margin-top:12px;padding:12px 14px;border-radius:16px;background:rgba(255,69,58,.12);border:1px solid rgba(255,69,58,.16);color:var(--red);font-size:11px;line-height:1.65}
     .note{margin-top:12px;padding:12px;border-radius:16px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.16);color:#8a5600;font-size:11px;line-height:1.65}
 
     .progress-top{display:flex;justify-content:space-between;gap:14px;margin-bottom:8px}
@@ -414,17 +417,36 @@
   "BHP":"908101","TSM":"909800","BABA":"A117TB","TCEHY":"A1138D",
   "INFY":"A0NECU","HDB":"A0F6TN","VALE":"897998","PBR":"896475",
   "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6",
+  "PANW":"A1JZ0Q",
+  "SNPS":"883703",
+  "WDAY":"A1J39P",
+  "SPGI":"A2AHZ7",
+  "WFC":"857949",
+  "DE":"850866",
+  "NKE":"866993",
+  "REGN":"881535",
+  "HSBA.L":"923893",
+  "MUFG":"657892",
+
 };
 
-    const APP_VERSION = '6.2.7';
+    const APP_VERSION = '6.3.0';
     const APP_RELEASE_DATE = '2026-06-02';
-    const ARCH_PROFILE = 'Single-File Client PWA · conservative Finnhub runtime';
+    const ARCH_PROFILE = 'Single-File Client PWA · api.finnhub.io runtime · partial-live diagnostics';
     const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
     const CONCURRENCY = 1;              // Für Browser/PWA + Finnhub Free Plan konservativ stabiler
     const BATCH_DELAY_MS = 3500;        // Längere Pause zwischen Titeln reduziert HTML-/WAF-/429-Antworten
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 3500;
     const REQUEST_GAP_MS = 550;         // Pause zwischen den vier Endpunkten je Aktie
+    const SELF_TEST_SYMBOL = 'AAPL';
+    const PREFLIGHT_TIMEOUT_MS = 12000;
+    const FINNHUB_ENDPOINTS = [
+      'stock/metric?symbol=<TICKER>&metric=all',
+      'stock/recommendation?symbol=<TICKER>',
+      'quote?symbol=<TICKER>',
+      'stock/price-target?symbol=<TICKER>'
+    ];
     const HTML_RETRY_DELAYS_MS = [8000, 15000, 30000];
     const RATE_LIMIT_RETRY_DELAYS_MS = [20000, 45000, 90000];
     const NETWORK_RETRY_DELAYS_MS = [4000, 9000, 18000];
@@ -602,7 +624,7 @@
       else add(13,'Kurspotenzial',-1,fmtPct(analystTargetUpside),'Negativ');
 
       const totalScore = criteria.filter(c => c.active).reduce((sum, c) => sum + c.score, 0);
-      const recommendation = totalScore >= 4 ? 'KAUFEN' : totalScore <= 2 ? 'VERKAUFEN' : 'HALTEN';
+      const recommendation = totalScore >= 4 ? 'KAUFEN' : totalScore <= 1 ? 'VERKAUFEN' : 'HALTEN';
       const applicable = criteria.filter(c => c.active && c.applicable).length;
       const available = criteria.filter(c => c.active && c.applicable && c.value !== 'n/v').length;
       const dataCompleteness = applicable ? Math.round((available / applicable) * 100) : 0;
@@ -636,32 +658,113 @@
           resp = await fetch(url, { method:'GET', mode:'cors', credentials:'omit', headers:{ 'Accept':'application/json' }, signal });
         } catch (err) {
           if (err && err.name === 'AbortError') throw err;
-          throw new Error(`Netzwerk: ${err.message} — CORS oder Verbindung. Key korrekt?`);
+          const e = new Error(`Netzwerk: ${err.message} — CORS oder Verbindung. Key korrekt?`);
+          e._path = path;
+          e._url = url;
+          e._status = 0;
+          throw e;
         }
 
-        if (resp.status === 401 || resp.status === 403) throw new Error(`API Key ungültig (${resp.status}) — Key auf finnhub.io prüfen`);
+        if (resp.status === 401) {
+          const e = new Error('API Key ungültig (401) — Key auf finnhub.io prüfen');
+          e._path = path; e._url = url; e._status = 401; e._fatalAuth = true;
+          throw e;
+        }
+        if (resp.status === 403) {
+          const e = new Error('403 Forbidden — Zugriff auf Ressource verweigert. Mögliche Ursachen: Browser/WAF-Block, Plan-/Endpoint-Beschränkung oder noch nicht aktivierter Key.');
+          e._path = path; e._url = url; e._status = 403;
+          throw e;
+        }
         if (resp.status === 429) {
           setProviderCooldown(PROVIDER_COOLDOWN_RATE_MS);
-          throw new Error('Rate Limit (429) — Finnhub verlangt Abkühlzeit. Statischer Fallback wird nach zusätzlichem Backoff verwendet, wenn keine Live-Antwort mehr kommt.');
+          const e = new Error('Rate Limit (429) — Finnhub verlangt Abkühlzeit.');
+          e._path = path; e._url = url; e._status = 429;
+          throw e;
         }
-        if (!resp.ok) throw new Error(`Finnhub HTTP ${resp.status}`);
+        if (!resp.ok) {
+          const e = new Error(`Finnhub HTTP ${resp.status}`);
+          e._path = path; e._url = url; e._status = resp.status;
+          throw e;
+        }
 
         const raw = await resp.text();
         if (!raw || raw.trim() === '') { CacheService.set(url, {}); return {}; }
 
         const trimmed = raw.trim();
         const contentType = (resp.headers.get('content-type') || '').toLowerCase();
-
         if (trimmed.startsWith('<!DOCTYPE html') || trimmed.startsWith('<html') || contentType.includes('text/html')) {
           setProviderCooldown(PROVIDER_COOLDOWN_HTML_MS);
-          throw new Error('Finnhub lieferte HTML statt JSON (Provider-/Rate-Limit-/WAF-Antwort). Statischer Fallback wird verwendet.');
+          const e = new Error('Finnhub lieferte HTML statt JSON (Provider-/Rate-Limit-/WAF-Antwort).');
+          e._path = path; e._url = url; e._status = resp.status || 200;
+          throw e;
         }
 
         let data;
-        try { data = JSON.parse(trimmed); } catch { throw new Error(`Finnhub lieferte kein gültiges JSON (${trimmed.slice(0,40)})`); }
-        if (data && data.error) { CacheService.set(url, {}); return {}; }
+        try {
+          data = JSON.parse(trimmed);
+        } catch {
+          const e = new Error(`Finnhub lieferte kein gültiges JSON (${trimmed.slice(0,40)})`);
+          e._path = path; e._url = url; e._status = resp.status || 200;
+          throw e;
+        }
+        if (data && data.error) { CacheService.set(url, data); return data; }
         CacheService.set(url, data);
         return data;
+      }
+
+      async function preflightCheck(key) {
+        const controller = addController(new AbortController());
+        const timeout = setTimeout(() => { try { controller.abort(); } catch {} }, PREFLIGHT_TIMEOUT_MS);
+        try {
+          const quote = await request(`quote?symbol=${SELF_TEST_SYMBOL}`, key, controller.signal);
+          const okQuote = quote && Number.isFinite(quote.c);
+          return {
+            ok: !!okQuote,
+            authError: false,
+            symbol: SELF_TEST_SYMBOL,
+            endpoint: `quote?symbol=${SELF_TEST_SYMBOL}`,
+            httpStatus: 200,
+            detail: okQuote ? `Quote erfolgreich geladen (${SELF_TEST_SYMBOL}: ${Number(quote.c).toFixed(2)})` : 'Request war erfolgreich, aber Quote ist leer.',
+            url: buildUrl(`quote?symbol=${SELF_TEST_SYMBOL}`, key),
+            ts: new Date().toISOString()
+          };
+        } catch (err) {
+          return {
+            ok: false,
+            authError: !!(err && err._fatalAuth),
+            symbol: SELF_TEST_SYMBOL,
+            endpoint: err && err._path ? err._path : `quote?symbol=${SELF_TEST_SYMBOL}`,
+            httpStatus: err && Number.isFinite(err._status) ? err._status : null,
+            detail: normalizeErrorText(err && (err.message || err) || 'Unbekannter Fehler'),
+            url: err && err._url ? err._url : buildUrl(`quote?symbol=${SELF_TEST_SYMBOL}`, key),
+            ts: new Date().toISOString()
+          };
+        } finally {
+          clearTimeout(timeout);
+          removeController(controller);
+        }
+      }
+
+      async function debugEndpoint(path, key) {
+        const controller = addController(new AbortController());
+        try {
+          const data = await request(path, key, controller.signal);
+          let detail = 'JSON erfolgreich geladen';
+          if (Array.isArray(data)) detail = `JSON Array (${data.length}) erfolgreich geladen`;
+          else if (data && typeof data === 'object') detail = `JSON Objekt erfolgreich geladen (${Object.keys(data).slice(0,5).join(', ') || 'leer'})`;
+          return { ok:true, path, url: buildUrl(path, key), httpStatus:200, detail };
+        } catch (err) {
+          return {
+            ok:false,
+            path,
+            url: err && err._url ? err._url : buildUrl(path, key),
+            httpStatus: err && Number.isFinite(err._status) ? err._status : null,
+            detail: normalizeErrorText(err && (err.message || err) || 'Fehler'),
+            authError: !!(err && err._fatalAuth)
+          };
+        } finally {
+          removeController(controller);
+        }
       }
 
       function inferCurrency(ticker) {
@@ -802,7 +905,7 @@
         controllers.forEach(ctrl => { try { ctrl.abort(); } catch {} });
         controllers.clear();
       }
-      return { fetchWithRetry, abortAll };
+      return { fetchWithRetry, abortAll, preflightCheck, debugEndpoint };
     })();
 
     const state = {
@@ -823,7 +926,10 @@
       reportFilter:'ALLE',
       stopRequested:false,
       analysisToken:0,
-      lastRunMode:'static'
+      lastRunMode:'static',
+      preflight:null,
+      diagnosing:false,
+      authIssue:''
     };
 
     let renderQueued = false;
@@ -843,6 +949,9 @@
         message: extra.warning && source === 'live' ? 'Daten weitgehend aus Finnhub geladen; optionale Endpoints wurden übersprungen.' : source === 'live' ? 'Daten erfolgreich aus Finnhub geladen.' : source === 'fallback' ? 'Finnhub fehlgeschlagen, statische Fallback-Daten verwendet.' : 'Statischer Modus – lokale Datenbasis verwendet.',
         error: errorText,
         score: extra.score ?? null,
+        endpoint: extra.endpoint || '',
+        httpStatus: extra.httpStatus ?? null,
+        detail: extra.detail || '',
         warning: extra.warning || '',
         reasonCode: extra.reasonCode || classification.code,
         reasonLabel: extra.reasonLabel || classification.label
@@ -858,9 +967,32 @@
 
     async function runFinnhub(){
       const key = state.apiKey.trim();
-      if(!key || state.running) return;
+      if(!key || state.running || state.diagnosing) return;
       const token = Date.now();
-      setState({ running:true, done:false, results:[], errors:[], logs:[], progress:0, curTicker:'', stopRequested:false, analysisToken:token, lastRunMode:'finnhub' });
+      setState({ running:true, done:false, results:[], errors:[], logs:[], progress:0, curTicker:'', stopRequested:false, analysisToken:token, lastRunMode:'finnhub', preflight:null, authIssue:'' });
+
+      const preflight = await FinnhubService.preflightCheck(key);
+      setState({ preflight, progress: preflight.ok ? 3 : 0, authIssue: preflight.authError ? (preflight.detail || 'Authentifizierungsfehler') : '' });
+      appendLog({
+        ts: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+        ticker: preflight.symbol || SELF_TEST_SYMBOL,
+        name:'API-Selbsttest',
+        source: preflight.ok ? 'live' : 'fallback',
+        message: preflight.ok ? 'API-Selbsttest erfolgreich.' : 'API-Selbsttest fehlgeschlagen. Vollscan wird nicht gestartet.',
+        error: preflight.ok ? '' : preflight.detail,
+        score:null,
+        endpoint: preflight.endpoint || '',
+        httpStatus: preflight.httpStatus ?? null,
+        detail: preflight.url || preflight.detail || '',
+        warning:'',
+        reasonCode: classifyRuntimeError(preflight.detail || '').code,
+        reasonLabel: classifyRuntimeError(preflight.detail || '').label
+      });
+      if(!preflight.ok){
+        setState({ running:false, done:true, curTicker:'', errors:[{ ticker: preflight.symbol || SELF_TEST_SYMBOL, error: preflight.detail || 'Preflight fehlgeschlagen' }], progress:0 });
+        return;
+      }
+
       const batch = STATIC_STOCK_DATA.slice(0, Math.min(state.count, STATIC_STOCK_DATA.length));
       const results = [];
       const errors = [];
@@ -879,10 +1011,26 @@
           const stock = chunk[idx];
           if(entry.status === 'fulfilled'){
             batchResults.push(entry.value);
-            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore, reasonCode: entry.value._fallbackType || classifyRuntimeError(entry.value._fallbackError || '').code }));
+            appendLog(buildLogEntry(stock, entry.value._source || 'live', {
+              error: entry.value._fallbackError || '',
+              score: entry.value.totalScore,
+              endpoint: entry.value._fallbackEndpoint || 'stock/metric + stock/recommendation + quote + stock/price-target',
+              httpStatus: entry.value._source === 'fallback' ? (entry.value._fallbackStatus ?? null) : 200,
+              detail: entry.value._fallbackDetail || '',
+              warning: entry.value._partialLive ? (entry.value._liveWarnings || []).join(' | ') : '',
+              reasonCode: entry.value._fallbackType || classifyRuntimeError(entry.value._fallbackError || '').code
+            }));
           } else if (!(entry.reason && entry.reason.name === 'AbortError')) {
             batchErrors.push(Object.assign({}, stock, { error: entry.reason?.message || 'Fehler' }));
-            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null, reasonCode: classifyRuntimeError(entry.reason?.message || 'Fehler').code }));
+            appendLog(buildLogEntry(stock, 'fallback', {
+              error: entry.reason?.message || 'Fehler',
+              score:null,
+              endpoint: entry.reason?._path || '',
+              httpStatus: Number.isFinite(entry.reason?._status) ? entry.reason._status : null,
+              detail: entry.reason?._url || '',
+              warning:'',
+              reasonCode: classifyRuntimeError(entry.reason?.message || 'Fehler').code
+            }));
           }
         });
         completed += chunk.length;
@@ -895,11 +1043,48 @@
       setState({ running:false, done:true, curTicker:'', progress:state.stopRequested ? state.progress : 100 });
     }
 
+    async function runDiagnosis(){
+      const key = state.apiKey.trim();
+      if(!key || state.running || state.diagnosing) return;
+      setState({ diagnosing:true, logs:[], errors:[], done:false, progress:0, curTicker:'Diagnose läuft…', preflight:null, authIssue:'' });
+      const endpoints = [
+        { label:'stock/metric', path:'stock/metric?symbol=AAPL&metric=all' },
+        { label:'stock/recommendation', path:'stock/recommendation?symbol=AAPL' },
+        { label:'quote', path:'quote?symbol=AAPL' },
+        { label:'stock/price-target', path:'stock/price-target?symbol=AAPL' }
+      ];
+      const logs = [];
+      const errors = [];
+      for(let i=0; i<endpoints.length; i++){
+        const ep = endpoints[i];
+        const result = await FinnhubService.debugEndpoint(ep.path, key);
+        logs.unshift({
+          ts:new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+          ticker:'AAPL',
+          name:`Diagnose · ${ep.label}`,
+          source: result.ok ? 'live' : 'fallback',
+          message: result.ok ? 'Endpoint erfolgreich geprüft.' : 'Endpoint-Prüfung fehlgeschlagen.',
+          error: result.ok ? '' : (result.detail || 'Fehler'),
+          score:null,
+          endpoint: ep.path,
+          httpStatus: result.httpStatus ?? null,
+          detail: result.url || result.detail || '',
+          warning:'',
+          reasonCode: classifyRuntimeError(result.detail || '').code,
+          reasonLabel: classifyRuntimeError(result.detail || '').label
+        });
+        if(!result.ok) errors.push({ ticker:ep.label, error: result.detail || 'Fehler' });
+        setState({ logs: logs.slice(), errors: errors.slice(), progress: Math.round(((i+1)/endpoints.length)*100), authIssue: result.authError ? (result.detail || 'Authentifizierungsfehler') : state.authIssue });
+      }
+      const authFailure = logs.some(l => l.httpStatus === 401);
+      setState({ diagnosing:false, done:true, curTicker:'', preflight:{ ok: !authFailure && errors.length === 0, authError: authFailure, endpoint:'Diagnose aller Finnhub-Endpunkte', httpStatus: authFailure ? 401 : (errors.length ? (logs.find(l => l.source === 'fallback')?.httpStatus ?? null) : 200), detail: authFailure ? 'Mindestens ein Endpoint lieferte 401.' : `Diagnose abgeschlossen: ${logs.filter(l => l.source === 'live').length} erfolgreich, ${errors.length} fehlgeschlagen.`, url:'', ts:new Date().toISOString() }, progress:100 });
+    }
+
     function stopAnalysis(){
       state.stopRequested = true;
       FinnhubService.abortAll();
       appendLog({ ts:new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }), ticker:'—', name:'Analyse gestoppt', source:'static', message:'Lauf durch Benutzer beendet.', error:'', score:null });
-      setState({ running:false, done:true, curTicker:'' });
+      setState({ running:false, diagnosing:false, done:true, curTicker:'' });
     }
 
     function getSummary(){
@@ -1011,6 +1196,8 @@
             <span class="log-src ${sourceClass(entry.source)}">${escapeHtml(sourceLabel(entry.source))}</span>
           </div>
           <div class="log-error" style="color:var(--subtext)">${escapeHtml(entry.message)}</div>
+          ${entry.endpoint ? `<div class="log-error" style="color:var(--subtext)">Endpoint: ${escapeHtml(entry.endpoint)}${entry.httpStatus !== null && entry.httpStatus !== undefined ? ` · HTTP ${escapeHtml(entry.httpStatus)}` : ''}</div>` : ''}
+          ${entry.detail ? `<div class="log-error" style="color:var(--subtext)">Detail: ${escapeHtml(entry.detail)}</div>` : ''}
           ${entry.warning ? `<div class="log-error" style="color:var(--yellow)">Hinweis: ${escapeHtml(entry.warning)}</div>` : ''}
           ${entry.error ? `<div class="log-error">Grund: ${escapeHtml(entry.error)}</div>` : ''}
         </div>
@@ -1021,7 +1208,7 @@
             <div>
               <div class="section-kicker">Source & Fallback Diagnostics</div>
               <div class="section-title">Quellen-Log</div>
-              <div class="section-desc">Zeigt je Aktie, ob der Datensatz aus Finnhub oder dem statischen Fallback stammt. Im statischen Modus werden lokale Datensätze entsprechend markiert.</div>
+              <div class="section-desc">Zeigt je Aktie, ob der Datensatz aus Finnhub oder dem statischen Fallback stammt. Im statischen Modus werden lokale Datensätze entsprechend markiert. Im Diagnose-Modus wird zusätzlich jeder Finnhub-Endpoint einzeln gegen AAPL geprüft; Partial-Live-Warnungen erscheinen direkt im Log.</div>
             </div>
             <div class="section-pills">
               <span class="section-pill">LIVE ${summary.live}</span>
@@ -1132,8 +1319,27 @@
               <div class="api-note">
                 1. <a href="https://finnhub.io" target="_blank" rel="noopener noreferrer">finnhub.io</a> → registrieren → Dashboard → API Key kopieren<br />
                 2. Key hier einfügen → Analyse starten<br />
-                <span class="warn">⚠ Wenn Finnhub je Aktie scheitert, protokolliert das Tool den Fallback im Log und markiert den Datensatz sichtbar.</span>
+                <span class="warn">⚠ Neu in 6.3.0: API-Selbsttest, Diagnose-Button, Endpoint-Logging und Partial-Live-Modus. Bei 401 wird die Authentifizierung klar markiert; bei 403/429 auf optionalen Endpoints werden die übrigen Live-Daten weiterverwendet.</span>
               </div>
+              ${state.authIssue ? `<div class="banner-auth">🔐 Authentifizierungsproblem erkannt: ${escapeHtml(state.authIssue)}<br />Bitte Schlüssel im Finnhub-Dashboard neu erzeugen und den Direkt-Test gegen <span class="mono">quote?symbol=AAPL</span> prüfen.</div>` : ''}
+            </section>
+          ` : ''}
+
+          ${state.mode === 'finnhub' ? `
+            <section class="card glass">
+              <div class="section-head">
+                <div>
+                  <div class="section-kicker">Connectivity & Runtime</div>
+                  <div class="section-title">Finnhub Endpoint-Übersicht</div>
+                  <div class="section-desc">Version 6.3.0 prüft vor dem Vollscan zuerst <span class="mono">quote?symbol=${SELF_TEST_SYMBOL}</span> und kann per Diagnose-Button alle vier Runtime-Endpoints einzeln testen.</div>
+                </div>
+                <div class="section-pills">
+                  <span class="section-pill">Basis: api.finnhub.io</span>
+                  <span class="section-pill">4 Endpoints</span>
+                </div>
+              </div>
+              <div class="chips">${FINNHUB_ENDPOINTS.map(endpoint => `<span class="chip active-default mono">${escapeHtml(endpoint)}</span>`).join('')}</div>
+              ${state.preflight ? `<div class="note">${state.preflight.ok ? '✅ API-Selbsttest erfolgreich' : '⚠ API-Selbsttest fehlgeschlagen'} · Endpoint: ${escapeHtml(state.preflight.endpoint || '')}${state.preflight.httpStatus !== null && state.preflight.httpStatus !== undefined ? ` · HTTP ${escapeHtml(state.preflight.httpStatus)}` : ''}<br />${escapeHtml(state.preflight.url || state.preflight.detail || '')}</div>` : ''}
             </section>
           ` : ''}
 
@@ -1157,22 +1363,23 @@
             <input id="countInput" type="range" min="10" max="${STATIC_STOCK_DATA.length}" step="5" value="${maxN}" ${state.running ? 'disabled' : ''} />
             <div class="ticks">${TICK_VALUES.map(v => `<button class="tick-btn ${state.count === v ? 'active' : ''}" data-action="set-count" data-value="${v}">${v}</button>`).join('')}</div>
             <div class="btn-row">
-              <button class="btn-primary" data-action="run-analysis" ${(state.running || (state.mode === 'finnhub' && !state.apiKey.trim())) ? 'disabled' : ''}>${state.running ? `Analysiere... (${state.progress}%)` : state.done ? 'Erneut analysieren' : `${maxN} Aktien analysieren`}</button>
-              ${state.running ? '<button class="btn-secondary" data-action="stop-analysis">Stop</button>' : ''}
+              <button class="btn-primary" data-action="run-analysis" ${(state.running || state.diagnosing || (state.mode === 'finnhub' && !state.apiKey.trim())) ? 'disabled' : ''}>${state.running ? `Analysiere... (${state.progress}%)` : state.done ? 'Erneut analysieren' : `${maxN} Aktien analysieren`}</button>
+              ${state.mode === 'finnhub' ? `<button class="btn-diagnose" data-action="run-diagnosis" ${(state.running || state.diagnosing || !state.apiKey.trim()) ? 'disabled' : ''}>${state.diagnosing ? `Diagnose... (${state.progress}%)` : 'Diagnose'}</button>` : ''}
+              ${(state.running || state.diagnosing) ? '<button class="btn-secondary" data-action="stop-analysis">Stop</button>' : ''}
             </div>
-            <div class="note">Neu: iOS-inspirierte Optik mit konservativem Live-Profil für deine Single-File-/PWA-Architektur: CONCURRENCY=1, längere Batch-Pausen, globale Provider-Abkühlzeit und spezieller HTML-/Rate-Limit-Backoff vor dem finalen Fallback. Zusätzlich nutzt Version 6.2.7 einen Partial-Live-Modus: Wenn optionale Finnhub-Endpoints wie Recommendation oder Price Target mit 403/429/HTML scheitern, werden die übrigen Live-Daten weiterverwendet, statt die komplette Aktie auf statischen Fallback zu setzen.</div>
+            <div class="note">Neu in 6.3.0: konservatives Live-Profil plus Partial-Live-Modus. Wenn optionale Endpoints wie Recommendation oder Price Target mit 403/429/HTML scheitern, werden die anderen Finnhub-Live-Daten weiterverwendet. Bei 401 stoppt der Vollscan bereits im API-Selbsttest.</div>
           </section>
 
-          ${state.running ? `
+          ${(state.running || state.diagnosing) ? `
             <section class="card glass">
               <div class="section-head">
                 <div>
                   <div class="section-kicker">Live Progress</div>
-                  <div class="section-title">Analyse läuft</div>
+                  <div class="section-title">${state.diagnosing ? 'Diagnose läuft' : 'Analyse läuft'}</div>
                 </div>
                 <div class="section-pill">${state.progress}%</div>
               </div>
-              <div class="progress-top"><span class="progress-title">Analysiere: ${escapeHtml(state.curTicker || '…')}</span><span class="progress-pct">${state.progress}%</span></div>
+              <div class="progress-top"><span class="progress-title">${state.diagnosing ? 'Prüfe Endpoints' : 'Analysiere'}: ${escapeHtml(state.curTicker || '…')}</span><span class="progress-pct">${state.progress}%</span></div>
               <div class="progress-bar"><div class="progress-fill" style="width:${state.progress}%"></div></div>
               ${state.errors.length ? `<details><summary>${state.errors.length} Fehler</summary><div class="error-list">${state.errors.map(e => `${escapeHtml(e.ticker)}: ${escapeHtml(normalizeErrorText(e.error))}`).join(' | ')}</div></details>` : ''}
             </section>
@@ -1296,7 +1503,7 @@
               <div class="headline">Top-30 <span class="accent">Screening</span></div>
               <div class="subtitle">${STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · statisch + Finnhub Live · Apple-/iOS-inspirierte Oberfläche mit Quellen-Log und Score-Drilldown · ${APP_VERSION}</div>
               <div class="quick-badges">
-                <span class="quick-badge"> inspiriertes UI</span>
+                <span class="quick-badge">📱 iOS-inspiriertes UI</span>
                 <span class="quick-badge">🪵 Quellen-Log</span>
                 <span class="quick-badge">📈 Score-Drilldown</span>
                 <span class="quick-badge">Version ${APP_VERSION}</span>
@@ -1345,6 +1552,7 @@
         return setState({ expandedTicker: state.expandedTicker === ticker ? null : ticker });
       }
       if(action === 'run-analysis') return (state.mode === 'static' ? runStatic() : runFinnhub());
+      if(action === 'run-diagnosis') return runDiagnosis();
       if(action === 'stop-analysis') return stopAnalysis();
       if(action === 'report-filter') return setState({ reportFilter: el.getAttribute('data-value') || 'ALLE' });
       if(action === 'report-sort') return setState({ reportSort: el.getAttribute('data-value') || 'score' });
