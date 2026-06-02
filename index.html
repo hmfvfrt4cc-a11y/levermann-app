@@ -1,295 +1,37 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Levermann" />
-  <meta name="theme-color" content="#f2f2f7" />
-  <title>Levermann ACWI — iOS Edition</title>
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23f2f2f7'/><text y='75' x='10' font-size='75'>📈</text></svg>" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg:#f2f2f7;
-      --bg-grad-1:#ffffff;
-      --bg-grad-2:#edf0f8;
-      --card:rgba(255,255,255,.72);
-      --card-strong:rgba(255,255,255,.86);
-      --card-solid:#ffffff;
-      --border:rgba(34,34,34,.07);
-      --border-strong:rgba(34,34,34,.1);
-      --text:#111111;
-      --subtext:#5f6472;
-      --muted:#7b8091;
-      --accent:#0A84FF;
-      --accent-2:#5AC8FA;
-      --accent-glow:rgba(10,132,255,.14);
-      --green:#30D158;
-      --green-glow:rgba(48,209,88,.15);
-      --yellow:#FF9F0A;
-      --yellow-glow:rgba(255,159,10,.16);
-      --red:#FF453A;
-      --red-glow:rgba(255,69,58,.15);
-      --shadow-xl:0 24px 44px rgba(15,23,42,.12);
-      --shadow-lg:0 16px 30px rgba(15,23,42,.10);
-      --shadow-md:0 10px 18px rgba(15,23,42,.08);
-      --radius-xl:26px;
-      --radius-lg:22px;
-      --radius-md:18px;
-      --radius-sm:14px;
-      --sans:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
-      --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    html,body{min-height:100%}
-    body{
-      font-family:var(--sans);
-      color:var(--text);
-      background:
-        radial-gradient(1000px 620px at 0% -10%, rgba(10,132,255,.11), transparent 55%),
-        radial-gradient(800px 500px at 100% 0%, rgba(90,200,250,.10), transparent 48%),
-        linear-gradient(180deg,var(--bg-grad-1) 0%, var(--bg) 46%, var(--bg-grad-2) 100%);
-      overscroll-behavior:none;
-    }
-    a{color:var(--accent);text-decoration:none}
-    button,input,select{font:inherit}
-    button{border:none;background:none;color:inherit;cursor:pointer}
-    .app{min-height:100vh;padding-bottom:env(safe-area-inset-bottom);position:relative;isolation:isolate}
-    .app::before,.app::after{content:"";position:fixed;pointer-events:none;z-index:-1;filter:blur(45px);opacity:.48}
-    .app::before{top:90px;right:-60px;width:220px;height:220px;background:radial-gradient(circle, rgba(10,132,255,.18), transparent 70%)}
-    .app::after{left:-60px;bottom:90px;width:200px;height:200px;background:radial-gradient(circle, rgba(90,200,250,.15), transparent 70%)}
-    .shell{max-width:1100px;margin:0 auto;padding:0 20px}
-    .glass{
-      backdrop-filter:blur(20px) saturate(180%);
-      -webkit-backdrop-filter:blur(20px) saturate(180%);
-      background:var(--card);
-      border:1px solid rgba(255,255,255,.55);
-      box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.55);
-    }
-    .topbar,.tabbar{position:sticky;z-index:40}
-    .topbar{top:0;border-bottom:1px solid rgba(255,255,255,.55)}
-    .topbar-inner{padding:20px 0 18px}
-    .eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-    .eyebrow-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px rgba(10,132,255,.12)}
-    .eyebrow-text{font-family:var(--mono);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#4a5d86}
-    .headline{font-size:32px;line-height:1.02;letter-spacing:-.9px;font-weight:800}
-    .accent{color:var(--accent)}
-    .subtitle{margin-top:8px;color:var(--subtext);font-size:13px;line-height:1.75;max-width:72ch}
-    .quick-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-    .quick-badge{padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.78);box-shadow:inset 0 1px 0 rgba(255,255,255,.85);font-size:10px;color:#40506f}
-    .tabbar{top:110px;padding:8px 0 10px}
-    .tabs-wrap{padding:6px;border-radius:18px}
-    .tabs{display:flex;gap:6px}
-    .tab-btn{flex:0 0 auto;padding:11px 16px;border-radius:14px;font-size:13px;font-weight:700;color:var(--subtext);transition:all .16s ease}
-    .tab-btn.active{background:rgba(255,255,255,.75);color:var(--text);box-shadow:var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.85)}
-    .tab-btn:hover{transform:translateY(-1px)}
-    .main{padding:20px 0 30px}
-
-    .hero{padding:24px;border-radius:var(--radius-xl);margin-bottom:18px;overflow:hidden;position:relative}
-    .hero::before{content:"";position:absolute;right:-50px;top:-40px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle, rgba(10,132,255,.18), transparent 70%)}
-    .hero::after{content:"";position:absolute;left:-40px;bottom:-35px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle, rgba(90,200,250,.16), transparent 72%)}
-    .hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:stretch}
-    .hero-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(10,132,255,.12);border:1px solid rgba(10,132,255,.18);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#2b5ca1}
-    .hero-tag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
-    .hero-title{font-size:30px;line-height:1.03;letter-spacing:-.8px;font-weight:800;max-width:13ch;margin-top:12px}
-    .hero-copy p{margin-top:12px;color:var(--subtext);font-size:13px;line-height:1.8;max-width:62ch}
-    .hero-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
-    .hero-badge{padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.78);box-shadow:inset 0 1px 0 rgba(255,255,255,.86);font-size:10px;color:#44516c}
-    .hero-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .metric-card{padding:14px;border-radius:22px;background:rgba(255,255,255,.64);border:1px solid rgba(255,255,255,.72);box-shadow:var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.88);min-height:116px;display:flex;flex-direction:column;justify-content:space-between}
-    .metric-card.blue{background:linear-gradient(180deg, rgba(239,247,255,.92), rgba(255,255,255,.7));}
-    .metric-card.green{background:linear-gradient(180deg, rgba(239,255,244,.92), rgba(255,255,255,.72));}
-    .metric-card.yellow{background:linear-gradient(180deg, rgba(255,248,235,.96), rgba(255,255,255,.74));}
-    .metric-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6b7896}
-    .metric-value{margin-top:4px;font-family:var(--mono);font-size:25px;font-weight:800;letter-spacing:-.3px}
-    .metric-sub{margin-top:6px;color:var(--subtext);font-size:11px;line-height:1.55}
-
-    .stack{display:grid;gap:14px}
-    .card{padding:18px;border-radius:var(--radius-lg);position:relative;overflow:hidden}
-    .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
-    .section-kicker{font-size:10px;letter-spacing:1.25px;text-transform:uppercase;color:#6482b5;margin-bottom:6px}
-    .section-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
-    .section-desc{margin-top:4px;font-size:12px;color:var(--subtext);line-height:1.65}
-    .section-pills{display:flex;gap:8px;flex-wrap:wrap}
-    .section-pill{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.68);border:1px solid rgba(255,255,255,.8);box-shadow:inset 0 1px 0 rgba(255,255,255,.86);font-size:10px;color:#485770}
-
-    .mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .mode-option{padding:15px;border-radius:20px;text-align:left;transition:all .15s ease;background:rgba(255,255,255,.48);border:1px solid rgba(255,255,255,.76);box-shadow:inset 0 1px 0 rgba(255,255,255,.86)}
-    .mode-option.active{background:linear-gradient(180deg, rgba(241,248,255,.96), rgba(255,255,255,.82));border-color:rgba(10,132,255,.18);box-shadow:var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.94)}
-    .mode-option:hover,.chip:hover,.btn-primary:hover:not(:disabled),.btn-secondary:hover,.btn-export:hover{transform:translateY(-1px)}
-    .mode-icon{font-size:22px;margin-bottom:8px}
-    .mode-title{font-size:14px;font-weight:700}
-    .mode-title.active{color:var(--accent)}
-    .mode-sub{margin-top:4px;color:var(--subtext);line-height:1.55;font-size:11px}
-
-    .field{width:100%;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.82);box-shadow:inset 0 1px 0 rgba(255,255,255,.92);color:var(--text);font-family:var(--mono);font-size:13px;outline:none}
-    .field:focus{border-color:rgba(10,132,255,.22);box-shadow:0 0 0 5px rgba(10,132,255,.10), inset 0 1px 0 rgba(255,255,255,.94)}
-    .api-note{margin-top:10px;font-size:11px;line-height:1.75;color:var(--subtext)}
-    .api-note .warn{color:#aa6a00}
-    .controls-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
-    .controls-value{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-    .count-value{font-size:30px;line-height:1;font-weight:800;font-family:var(--mono);color:var(--accent)}
-    .estimate{font-size:11px;color:var(--subtext)}
-    .small-pill{font-size:11px;color:var(--green)}
-    input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:999px;background:rgba(120,120,128,.18);outline:none}
-    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid rgba(10,132,255,.18);box-shadow:0 8px 18px rgba(10,132,255,.18)}
-    input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;border:1px solid rgba(10,132,255,.18);background:#fff;box-shadow:0 8px 18px rgba(10,132,255,.18)}
-    .ticks{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-top:8px}
-    .tick-btn{font-family:var(--mono);font-size:10px;color:var(--muted)}
-    .tick-btn.active{color:var(--accent);font-weight:700}
-    .btn-row{display:flex;gap:10px;margin-top:16px}
-    .btn-primary,.btn-secondary,.btn-export{transition:all .15s ease}
-    .btn-primary{flex:1;padding:14px 16px;border-radius:18px;font-size:14px;font-weight:800;background:linear-gradient(180deg, #1394ff 0%, #007aff 100%);color:#fff;box-shadow:0 16px 28px rgba(10,132,255,.22), inset 0 1px 0 rgba(255,255,255,.35)}
-    .btn-primary:disabled{background:linear-gradient(180deg, #b7c3d4 0%, #aab6c8 100%);color:#eff2f7;cursor:not-allowed;box-shadow:none}
-    .btn-secondary{padding:14px 18px;border-radius:18px;font-size:13px;font-weight:800;background:rgba(255,69,58,.12);color:var(--red);border:1px solid rgba(255,69,58,.16)}
-    .btn-export{padding:8px 12px;border-radius:14px;background:rgba(10,132,255,.10);border:1px solid rgba(10,132,255,.16);color:var(--accent);font-size:11px;font-weight:700}
-    .note{margin-top:12px;padding:12px;border-radius:16px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.16);color:#8a5600;font-size:11px;line-height:1.65}
-
-    .progress-top{display:flex;justify-content:space-between;gap:14px;margin-bottom:8px}
-    .progress-title{font-size:12px;color:var(--subtext);animation:pulse 1.5s infinite}
-    .progress-pct{font-size:12px;font-family:var(--mono);color:var(--accent)}
-    .progress-bar{height:8px;border-radius:999px;background:rgba(120,120,128,.16);overflow:hidden}
-    .progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .25s ease}
-    details{margin-top:8px}
-    details summary{list-style:none;cursor:pointer;font-size:11px;color:var(--red)}
-    details summary::-webkit-details-marker{display:none}
-    .error-list{margin-top:5px;font-family:var(--mono);font-size:10px;line-height:1.8;color:var(--subtext);word-break:break-word}
-
-    .panel{padding:14px;border-radius:var(--radius-lg)}
-    .chips{display:flex;gap:6px;flex-wrap:wrap}
-    .chip{padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.52);border:1px solid rgba(255,255,255,.76);box-shadow:inset 0 1px 0 rgba(255,255,255,.86);font-size:11px;color:var(--subtext)}
-    .chip.active-default{background:rgba(10,132,255,.12);border-color:rgba(10,132,255,.18);color:var(--accent)}
-    .chip.active-green{background:var(--green-glow);border-color:rgba(48,209,88,.18);color:var(--green)}
-    .chip.active-yellow{background:var(--yellow-glow);border-color:rgba(255,159,10,.18);color:var(--yellow)}
-    .chip.active-red{background:var(--red-glow);border-color:rgba(255,69,58,.18);color:var(--red)}
-
-    .table-shell{margin-top:12px;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.86)}
-    .table-head,.table-row{display:grid;align-items:center;gap:10px}
-    .table-head{padding:9px 14px;background:rgba(255,255,255,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(120,120,128,.12);font-size:9px;color:#798094;letter-spacing:1.4px;text-transform:uppercase;font-family:var(--mono)}
-    .table-row{padding:12px 14px;border-bottom:1px solid rgba(120,120,128,.10);background:rgba(255,255,255,.56);position:relative;transition:background .12s ease}
-    .table-row.alt{background:rgba(255,255,255,.42)}
-    .table-row.clickable{cursor:pointer}
-    .table-row::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .14s ease;background:linear-gradient(90deg, rgba(10,132,255,.05), transparent 36%, transparent 68%, rgba(90,200,250,.04))}
-    .table-row:hover::after,.table-row.expanded::after{opacity:1}
-    .table-row.clickable:hover{background:rgba(255,255,255,.66)}
-    .rank{font-family:var(--mono);font-size:12px;font-weight:800;color:#7e8495}
-    .rank.top{color:var(--accent)}
-    .name-main{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;font-weight:700}
-    .name-sub{margin-top:2px;font-size:10px;color:var(--subtext);font-family:var(--mono)}
-    .score-value{display:block;font-size:17px;font-family:var(--mono);font-weight:800;line-height:1}
-    .score-btn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;border-radius:12px;background:none;border:none;width:100%}
-    .score-btn:hover .score-value{text-decoration:underline}
-    .score-btn:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:12px}
-    .score-bar{width:100%;height:4px;background:rgba(120,120,128,.16);border-radius:999px;overflow:hidden}
-    .score-bar > span{display:block;height:100%;border-radius:999px}
-    .badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.8px;border:1px solid transparent}
-    .badge.buy{background:var(--green-glow);border-color:rgba(48,209,88,.18);color:var(--green)}
-    .badge.hold{background:var(--yellow-glow);border-color:rgba(255,159,10,.18);color:var(--yellow)}
-    .badge.sell{background:var(--red-glow);border-color:rgba(255,69,58,.18);color:var(--red)}
-    .source-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:700;letter-spacing:.5px;background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.84)}
-    .source-badge.live{color:var(--green)}
-    .source-badge.fallback{color:var(--yellow)}
-    .source-badge.static{color:var(--accent)}
-    .good{color:var(--green)}
-    .mid{color:var(--yellow)}
-    .bad{color:var(--red)}
-    .criteria-shell{padding:12px 14px;background:rgba(255,255,255,.74);border-top:1px solid rgba(120,120,128,.11)}
-    .criteria-header{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
-    .criteria-title{font-size:13px;font-weight:800}
-    .criteria-sub{margin-top:2px;font-size:11px;color:var(--subtext);line-height:1.6}
-    .criteria-sum{padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.84);font-size:11px;color:#4d5669;box-shadow:inset 0 1px 0 rgba(255,255,255,.88)}
-    .criteria-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
-    .criterion{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:18px;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.84);box-shadow:inset 0 1px 0 rgba(255,255,255,.92)}
-    .criterion.pos{background:linear-gradient(180deg, rgba(242,255,246,.96), rgba(255,255,255,.86))}
-    .criterion.neg{background:linear-gradient(180deg, rgba(255,244,244,.96), rgba(255,255,255,.86))}
-    .criterion.na{background:linear-gradient(180deg, rgba(248,249,252,.96), rgba(255,255,255,.86))}
-    .bubble{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);background:rgba(120,120,128,.10);border:1.5px solid rgba(120,120,128,.18);color:#6d7484;flex:0 0 auto}
-    .criterion.pos .bubble{background:rgba(48,209,88,.08);border-color:rgba(48,209,88,.28);color:var(--green)}
-    .criterion.neg .bubble{background:rgba(255,69,58,.08);border-color:rgba(255,69,58,.22);color:var(--red)}
-    .criterion.na .bubble{background:rgba(120,120,128,.06);border-color:rgba(120,120,128,.16);color:#7b8191}
-    .criterion-title{font-size:10px;font-weight:800}
-    .criterion-value{font-size:10px;color:var(--accent);font-family:var(--mono);margin-top:3px}
-    .criterion-reason{font-size:9px;color:var(--subtext);margin-top:2px;line-height:1.4}
-    .criterion-impact{margin-top:6px;display:inline-flex;padding:3px 7px;border-radius:999px;background:rgba(120,120,128,.08);font-size:9px;font-weight:800;color:#576178}
-    .legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;color:var(--subtext);font-size:10px}
-    .legend-item{display:inline-flex;align-items:center;gap:6px}
-    .legend-box{width:10px;height:10px;border-radius:3px;border:1px solid rgba(120,120,128,.16)}
-    .footer-note{padding:11px 14px;text-align:center;font-size:10px;color:#788194;line-height:1.65;border-top:1px solid rgba(120,120,128,.10);background:rgba(255,255,255,.54)}
-
-    .stats-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:16px}
-    .stat-card{padding:14px 12px;border-radius:20px;text-align:center}
-    .stat-icon{font-size:16px;margin-bottom:6px}
-    .stat-value{font-size:21px;font-weight:800;font-family:var(--mono);line-height:1}
-    .stat-label{margin-top:5px;font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--subtext)}
-    .source-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
-    .source-tile{padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.56);border:1px solid rgba(255,255,255,.8);box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
-    .source-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6a7998}
-    .source-value{margin-top:4px;font-family:var(--mono);font-size:20px;font-weight:800}
-    .source-sub{margin-top:5px;font-size:11px;color:var(--subtext);line-height:1.55}
-    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-    .toolbar-right{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
-    .wkn-pill{display:inline-flex;padding:3px 6px;border-radius:10px;font-size:11px;font-family:var(--mono);font-weight:700}
-    .wkn-pill.has{background:rgba(120,120,128,.12);color:var(--text)}
-    .wkn-pill.none{color:var(--muted)}
-    .dots{display:flex;gap:2px;justify-content:center;margin-top:4px}
-    .dot{width:4px;height:4px;border-radius:50%;background:rgba(120,120,128,.36)}
-    .dot.pos{background:var(--green)}
-    .dot.neg{background:var(--red)}
-
-    .log-wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
-    .log-panel{padding:14px;border-radius:20px;background:rgba(255,255,255,.56);border:1px solid rgba(255,255,255,.8);box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
-    .log-list{margin-top:10px;max-height:280px;overflow:auto;display:grid;gap:8px}
-    .log-item{padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.66);border:1px solid rgba(255,255,255,.84);box-shadow:inset 0 1px 0 rgba(255,255,255,.92)}
-    .log-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-    .log-src{font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:800}
-    .log-src.live{color:var(--green)}
-    .log-src.fallback{color:var(--yellow)}
-    .log-src.static{color:var(--accent)}
-    .log-name{font-size:12px;font-weight:700}
-    .log-meta{margin-top:3px;font-size:10px;color:var(--subtext);font-family:var(--mono)}
-    .log-error{margin-top:5px;font-size:10px;color:#8a5600;line-height:1.5}
-    .placeholder{padding:58px 24px;border-radius:var(--radius-xl);text-align:center}
-    .placeholder-icon{font-size:42px;margin-bottom:14px}
-    .placeholder-title{font-size:16px;font-weight:800;margin-bottom:8px}
-    .placeholder-text{font-size:13px;line-height:1.8;color:var(--subtext)}
-    .mono{font-family:var(--mono)}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:rgba(120,120,128,.08);border-radius:999px}::-webkit-scrollbar-thumb{background:rgba(120,120,128,.28);border-radius:999px}
-    @media (max-width: 980px){
-      .hero-grid{grid-template-columns:1fr}
-      .stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
-      .source-strip,.log-wrap{grid-template-columns:1fr}
-      .tabbar{top:128px}
-    }
-    @media (max-width: 760px){
-      .shell{padding:0 16px}
-      .headline{font-size:27px}
-      .hero{padding:18px}
-      .hero-title{font-size:24px;max-width:none}
-      .hero-metrics{grid-template-columns:1fr 1fr}
-      .mode-grid{grid-template-columns:1fr}
-      .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .toolbar-right{margin-left:0;width:100%}
-      .tabbar{top:154px}
-    }
-    @media (max-width: 620px){
-      .hero-metrics{grid-template-columns:1fr}
-      .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .table-head.results,.table-row.results{grid-template-columns:30px minmax(0,1fr) 58px 80px 54px 68px !important}
-      .table-head.report,.table-row.report{grid-template-columns:30px minmax(0,1fr) 68px 70px 46px 64px 84px !important}
-      .name-main{font-size:12px}
-      .name-sub{font-size:9px}
-      .tabbar{top:182px}
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Levermann"/>
+<meta name="theme-color" content="#050608"/>
+<title>Levermann ACWI</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23050608'/><text y='75' x='10' font-size='75'>📈</text></svg>"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:#050608;color:#e2e6f3;font-family:'DM Sans','Segoe UI',sans-serif;overscroll-behavior:none;}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:#181c28;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#3d7eff;cursor:pointer;}
+input[type=password],input[type=text]{width:100%;padding:11px 14px;background:#0a0c12;border:1px solid #181c28;border-radius:8px;color:#e2e6f3;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:#0a0c12}::-webkit-scrollbar-thumb{background:#3a3f58;border-radius:2px}
+details summary{list-style:none}details summary::-webkit-details-marker{display:none}
+</style>
 </head>
 <body>
-  <div id="app"></div>
-  <script>
-    'use strict';
-    const STATIC_STOCK_DATA = [
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useMemo, useCallback, useEffect } = React;
+
+const STATIC_STOCK_DATA = [
   { ticker:"AAPL", name:"Apple Inc.", sector:"Technologie", region:"🇺🇸", roe:1.6, ebitMargin:0.31, equityRatio:0.1, pe:31, pe5yAvg:28, analystBuyPct:65, earningsReactionPct:1.2, perf6m:-5.0, perf12m:8.0, epsGrowthYoY:8.0, analystTargetUpside:12.0, currentPrice:195, currency:"USD" },
   { ticker:"MSFT", name:"Microsoft", sector:"Technologie", region:"🇺🇸", roe:0.38, ebitMargin:0.44, equityRatio:0.28, pe:35, pe5yAvg:32, analystBuyPct:90, earningsReactionPct:0.5, perf6m:-10.0, perf12m:5.0, epsGrowthYoY:15.0, analystTargetUpside:18.0, currentPrice:415, currency:"USD" },
   { ticker:"NVDA", name:"NVIDIA Corp.", sector:"Technologie", region:"🇺🇸", roe:1.2, ebitMargin:0.55, equityRatio:0.32, pe:38, pe5yAvg:55, analystBuyPct:90, earningsReactionPct:5.0, perf6m:12.0, perf12m:65.0, epsGrowthYoY:150.0, analystTargetUpside:20.0, currentPrice:875, currency:"USD" },
@@ -391,7 +133,8 @@
   { ticker:"VALE", name:"Vale S.A.", sector:"Rohstoffe", region:"🇧🇷", roe:0.22, ebitMargin:0.35, equityRatio:0.38, pe:8, pe5yAvg:9, analystBuyPct:52, earningsReactionPct:-2.0, perf6m:-18.0, perf12m:-12.0, epsGrowthYoY:-10.0, analystTargetUpside:20.0, currentPrice:12, currency:"USD" },
   { ticker:"PBR", name:"Petrobras", sector:"Energie", region:"🇧🇷", roe:0.28, ebitMargin:0.3, equityRatio:0.32, pe:5, pe5yAvg:5, analystBuyPct:52, earningsReactionPct:1.0, perf6m:-15.0, perf12m:-10.0, epsGrowthYoY:-15.0, analystTargetUpside:22.0, currentPrice:13, currency:"USD" },
 ];
-    const WKN = {
+
+const WKN = {
   "AAPL":"865985","MSFT":"870747","NVDA":"918422","AMZN":"906866","META":"A1JWVX",
   "GOOGL":"A14Y6F","TSLA":"A1CX3T","BRK-B":"900567","LLY":"858560","JPM":"850628",
   "V":"A0NC7B","UNH":"869561","XOM":"852549","MA":"A0F602","AVGO":"A2JG9Z",
@@ -416,837 +159,679 @@
   "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6",
 };
 
-    const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
-    const CONCURRENCY = 2;
-    const BATCH_DELAY_MS = 1200;
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 3000;
-    const ACTIVE_CRITERIA = 12;
-    const FINANCE_SECTORS = ["Finanzen", "Versicherung"];
-    const EU_FLAGS = ["🇩🇪","🇫🇷","🇬🇧","🇨🇭","🇳🇱","🇮🇹","🇪🇸","🇫🇮","🇸🇪","🇩🇰","🇧🇪","🇦🇹","🇵🇹","🇳🇴"];
-    const REGIONS = ["Alle","🇺🇸 USA","🇪🇺 Europa","🇯🇵 Japan","🇨🇳 China","🇮🇳 Indien","🇦🇺 Ozeanien","Andere"];
-    const TICK_VALUES = Array.from(new Set([10,25,50,75,100,STATIC_STOCK_DATA.length].filter(v => v <= STATIC_STOCK_DATA.length))).sort((a,b) => a-b);
+// ── Constants ─────────────────────────────────────────────────────
+const CACHE_TTL_MS    = 4 * 60 * 60 * 1000;
+const CONCURRENCY     = 2;    // iOS PWA: max 2 parallel — mehr triggert Rate Limit
+const BATCH_DELAY_MS  = 1200; // Pause zwischen Batches
+const MAX_RETRIES     = 2;
+const RETRY_DELAY_MS  = 3000;
+const FINANCE_SECTORS = ["Finanzen","Versicherung"];
 
-    const $ = (id) => document.getElementById(id);
-    const ok = (v) => v !== null && v !== undefined && Number.isFinite(v);
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[ch]);
-    const fmtScore = (s) => `${s > 0 ? '+' : ''}${s}`;
-    const fmtPct = (n, digits = 1) => ok(n) ? `${n > 0 ? '+' : ''}${Number(n).toFixed(digits)}%` : 'n/v';
-    const fmtPctAbs = (n, digits = 1) => ok(n) ? `${Number(n).toFixed(digits)}%` : 'n/v';
-    const recClass = (rec) => rec === 'KAUFEN' ? 'buy' : rec === 'VERKAUFEN' ? 'sell' : 'hold';
-    const scoreClass = (score) => score >= 4 ? 'good' : score >= 0 ? 'mid' : 'bad';
-    const dataClass = (pct) => pct >= 70 ? 'good' : pct >= 40 ? 'mid' : 'bad';
-    const sourceClass = (source) => source === 'live' ? 'live' : source === 'fallback' ? 'fallback' : 'static';
-    const sourceLabel = (source) => source === 'live' ? 'LIVE' : source === 'fallback' ? 'FALLBACK' : 'STATISCH';
-    const scoreFillColor = (score) => score >= 4 ? 'var(--green)' : score >= 0 ? 'var(--yellow)' : 'var(--red)';
-    const recommendationIndex = (rec) => ['KAUFEN','HALTEN','VERKAUFEN'].indexOf(rec);
-    const sourceLogLabel = (source) => source === 'live' ? 'Finnhub Live' : source === 'fallback' ? 'Statischer Fallback' : 'Statischer Modus';
+const C = {
+  bg:"#050608",surface:"#0a0c12",card:"#0f1119",border:"#181c28",
+  accent:"#3d7eff",accentGlow:"#3d7eff22",
+  green:"#00d97e",greenGlow:"#00d97e18",
+  yellow:"#f0b429",yellowGlow:"#f0b42918",
+  red:"#f03e3e",redGlow:"#f03e3e18",
+  muted:"#3a3f58",text:"#e2e6f3",subtext:"#636b8f",
+  mono:"'JetBrains Mono',monospace",sans:"'DM Sans','Segoe UI',sans-serif",
+};
 
-    function regionMatch(stock, filter) {
-      if (filter === 'Alle') return true;
-      if (filter === '🇺🇸 USA') return stock.region === '🇺🇸';
-      if (filter === '🇪🇺 Europa') return EU_FLAGS.includes(stock.region);
-      if (filter === '🇯🇵 Japan') return stock.region === '🇯🇵';
-      if (filter === '🇨🇳 China') return stock.region === '🇨🇳';
-      if (filter === '🇮🇳 Indien') return stock.region === '🇮🇳';
-      if (filter === '🇦🇺 Ozeanien') return ['🇦🇺','🇳🇿'].includes(stock.region);
-      return !['🇺🇸', ...EU_FLAGS, '🇯🇵', '🇨🇳', '🇮🇳', '🇦🇺', '🇳🇿'].includes(stock.region);
+// ── Levermann Scoring Engine ───────────────────────────────────────
+function calcScore(d, sector) {
+  const isFin = FINANCE_SECTORS.includes(sector);
+  const ok = v => v !== null && v !== undefined && isFinite(v);
+  const crit = [];
+  function sc(id,name,val,disp,reason){ crit.push({id,name,score:val,value:disp,reasoning:reason}); }
+
+  const roe=d.roe, em=d.ebitMargin, eq=d.equityRatio;
+  const pe5=d.pe5yAvg, pe=d.pe, buy=d.analystBuyPct;
+  const qr=d.earningsReactionPct, p6=d.perf6m, p12=d.perf12m;
+  const eg=d.epsGrowthYoY, up=d.analystTargetUpside;
+
+  if(!ok(roe))         sc(1,"EK-Rendite",0,"n/v","Keine Daten");
+  else if(roe>0.20)    sc(1,"EK-Rendite",1,(roe*100).toFixed(1)+"%",">20%");
+  else if(roe>=0.10)   sc(1,"EK-Rendite",0,(roe*100).toFixed(1)+"%","10-20%");
+  else                 sc(1,"EK-Rendite",-1,(roe*100).toFixed(1)+"%","<10%");
+
+  if(isFin)            sc(2,"EBIT-Marge",0,"n/a","Finanzsektor");
+  else if(!ok(em))     sc(2,"EBIT-Marge",0,"n/v","Keine Daten");
+  else if(em>0.12)     sc(2,"EBIT-Marge",1,(em*100).toFixed(1)+"%",">12%");
+  else if(em>=0.06)    sc(2,"EBIT-Marge",0,(em*100).toFixed(1)+"%","6-12%");
+  else                 sc(2,"EBIT-Marge",-1,(em*100).toFixed(1)+"%","<6%");
+
+  if(!ok(eq))          sc(3,"EK-Quote",0,"n/v","Keine Daten");
+  else if(isFin){
+    if(eq>0.10)        sc(3,"EK-Quote",1,(eq*100).toFixed(1)+"%",">10% (Bank)");
+    else if(eq>=0.05)  sc(3,"EK-Quote",0,(eq*100).toFixed(1)+"%","5-10% (Bank)");
+    else               sc(3,"EK-Quote",-1,(eq*100).toFixed(1)+"%","<5% (Bank)");
+  } else {
+    if(eq>0.25)        sc(3,"EK-Quote",1,(eq*100).toFixed(1)+"%",">25%");
+    else if(eq>=0.15)  sc(3,"EK-Quote",0,(eq*100).toFixed(1)+"%","15-25%");
+    else               sc(3,"EK-Quote",-1,(eq*100).toFixed(1)+"%","<15%");
+  }
+
+  if(!ok(pe5)||pe5<=0) sc(4,"KGV 5 Jahre",0,"n/v","Keine Daten");
+  else if(pe5<12)      sc(4,"KGV 5 Jahre",1,pe5.toFixed(1),"<12");
+  else if(pe5<=16)     sc(4,"KGV 5 Jahre",0,pe5.toFixed(1),"12-16");
+  else                 sc(4,"KGV 5 Jahre",-1,pe5.toFixed(1),">16");
+
+  if(!ok(pe)||pe<=0)   sc(5,"KGV aktuell",0,"n/v","Keine Daten");
+  else if(pe<12)       sc(5,"KGV aktuell",1,pe.toFixed(1),"<12");
+  else if(pe<=16)      sc(5,"KGV aktuell",0,pe.toFixed(1),"12-16");
+  else                 sc(5,"KGV aktuell",-1,pe.toFixed(1),">16");
+
+  if(!ok(buy))         sc(6,"Analysten",0,"n/v","Keine Daten");
+  else if(buy>70)      sc(6,"Analysten",-1,buy.toFixed(0)+"%","Kontra: >70% bullisch");
+  else if(buy>=50)     sc(6,"Analysten",0,buy.toFixed(0)+"%","Gemischt");
+  else                 sc(6,"Analysten",1,buy.toFixed(0)+"%","Kontra: bearisch");
+
+  if(!ok(qr))          sc(7,"Quartalsreaktion",0,"n/v","Keine Daten");
+  else if(qr>1)        sc(7,"Quartalsreaktion",1,qr.toFixed(1)+"%","Positiv");
+  else if(qr>=-1)      sc(7,"Quartalsreaktion",0,qr.toFixed(1)+"%","Neutral");
+  else                 sc(7,"Quartalsreaktion",-1,qr.toFixed(1)+"%","Negativ");
+
+  sc(8,"Gewinnrevision",0,"n/v","Nur Finnhub-Modus");
+
+  if(!ok(p6))          sc(9,"Kurs 6M",0,"n/v","Keine Daten");
+  else if(p6>5)        sc(9,"Kurs 6M",1,(p6>0?"+":"")+p6.toFixed(1)+"%","Stark");
+  else if(p6>=-5)      sc(9,"Kurs 6M",0,(p6>0?"+":"")+p6.toFixed(1)+"%","Seitwaerts");
+  else                 sc(9,"Kurs 6M",-1,p6.toFixed(1)+"%","Schwach");
+
+  if(!ok(p12))         sc(10,"Kurs 1J",0,"n/v","Keine Daten");
+  else if(p12>5)       sc(10,"Kurs 1J",1,(p12>0?"+":"")+p12.toFixed(1)+"%","Stark");
+  else if(p12>=-5)     sc(10,"Kurs 1J",0,(p12>0?"+":"")+p12.toFixed(1)+"%","Seitwaerts");
+  else                 sc(10,"Kurs 1J",-1,p12.toFixed(1)+"%","Schwach");
+
+  if(!ok(p6)||!ok(p12)) sc(11,"Momentum",0,"n/v","Keine Daten");
+  else if(p6>p12)       sc(11,"Momentum",1,"6M>1J","Beschleunigend");
+  else                  sc(11,"Momentum",-1,"6M<=1J","Abbremsend");
+
+  if(!ok(eg))          sc(12,"Gewinnwachstum",0,"n/v","Keine Daten");
+  else if(eg>0)        sc(12,"Gewinnwachstum",1,(eg>0?"+":"")+eg.toFixed(1)+"%","Wachstum");
+  else if(eg===0)      sc(12,"Gewinnwachstum",0,"0%","Unveraendert");
+  else                 sc(12,"Gewinnwachstum",-1,eg.toFixed(1)+"%","Rueckgang");
+
+  if(!ok(up))          sc(13,"Kurspotenzial",0,"n/v","Keine Daten");
+  else if(up>15)       sc(13,"Kurspotenzial",1,(up>0?"+":"")+up.toFixed(1)+"%",">15%");
+  else if(up>=0)       sc(13,"Kurspotenzial",0,(up>0?"+":"")+up.toFixed(1)+"%","0-15%");
+  else                 sc(13,"Kurspotenzial",-1,up.toFixed(1)+"%","Negativ");
+
+  const total = crit.reduce((s,c)=>s+c.score,0);
+  const rec   = total>=4?"KAUFEN":total<=2?"VERKAUFEN":"HALTEN";
+  const comp  = Math.round(crit.filter(c=>c.value!=="n/v"&&c.value!=="n/a").length/13*100);
+  return {criteria:crit,totalScore:total,recommendation:rec,dataCompleteness:comp};
+}
+
+// ── Finnhub Direct Client ──────────────────────────────────────────
+// Works in deployed PWA — no sandbox. Finnhub CORS is enabled.
+const FH_CACHE = new Map();
+
+async function fhGet(path, key) {
+  const url = "https://finnhub.io/api/v1/"+path+"&token="+key;
+  const hit = FH_CACHE.get(url);
+  if(hit && Date.now()-hit.ts < CACHE_TTL_MS) return hit.data;
+
+  // Explicit CORS mode — required for iOS PWA standalone
+  let resp;
+  try {
+    resp = await fetch(url, { method:"GET", mode:"cors", credentials:"omit",
+      headers:{"Accept":"application/json"} });
+  } catch(netErr) {
+    // "Load failed" arrives here — give a clear message
+    throw new Error("Netzwerk: "+netErr.message+" — CORS oder Verbindung. Key korrekt?");
+  }
+
+  if(resp.status===401||resp.status===403)
+    throw new Error("API Key ungueltig ("+resp.status+") — Key auf finnhub.io pruefen");
+  if(resp.status===429)
+    throw new Error("Rate Limit (429) — 60 Sek. warten, dann erneut starten");
+  if(!resp.ok) throw new Error("Finnhub HTTP "+resp.status);
+
+  // Safely read text first — resp.json() wirft in Safari "pattern" error bei leerem Body
+  let text;
+  try { text = await resp.text(); } catch(e) { throw new Error("Response lesen: "+e.message); }
+
+  if(!text || text.trim()==="") return {}; // leere Antwort = keine Daten, kein Fehler
+
+  const trimmed = text.trim();
+  const contentType = (resp.headers.get("content-type") || "").toLowerCase();
+
+  // Manche Provider-/WAF-/Rate-Limit-Antworten kommen als HTML statt JSON zurück.
+  if(trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html") || contentType.includes("text/html")) {
+    throw new Error("Finnhub lieferte HTML statt JSON (Provider-/Rate-Limit-/WAF-Antwort). Statischer Fallback wird verwendet.");
+  }
+
+  let data;
+  try { data = JSON.parse(trimmed); } catch(e) {
+    throw new Error("Finnhub lieferte kein gültiges JSON ("+trimmed.slice(0,40)+")");
+  }
+
+  // Finnhub gibt {"error":"..."} bei ungueltigem Symbol — kein throw, einfach leeres Objekt
+  if(data && data.error) return {};
+
+  FH_CACHE.set(url,{data,ts:Date.now()});
+  return data;
+}
+
+async function fetchFinnhubStock(stock, key) {
+  const t = stock.ticker;
+  // Sequential requests — prevents iOS rate-limit and CORS issues
+  // that occur with Promise.all on the Finnhub free plan
+  const metrics = await fhGet("stock/metric?symbol="+t+"&metric=all",key);
+  await new Promise(r=>setTimeout(r,250));
+  const recs    = await fhGet("recommendation?symbol="+t,key);
+  await new Promise(r=>setTimeout(r,250));
+  const quote   = await fhGet("quote?symbol="+t,key);
+  await new Promise(r=>setTimeout(r,250));
+  const target  = await fhGet("price-target?symbol="+t,key);
+  const m = (metrics&&metrics.metric)||{};
+  const ok = v => v!==null&&v!==undefined&&isFinite(v)&&v!==0;
+
+  let roe = ok(m.roeTTM)?m.roeTTM/100:null;
+  if(roe!==null&&(roe>5||roe<-2)) roe=null;
+
+  let ebitMargin=null;
+  if(ok(m.ebitdMarginTTM)) ebitMargin=m.ebitdMarginTTM/100;
+  else if(ok(m.netProfitMarginTTM)) ebitMargin=m.netProfitMarginTTM/100;
+
+  let equityRatio=null;
+  if(ok(m.totalDebt2TotalEquityAnnual)&&m.totalDebt2TotalEquityAnnual>=0)
+    equityRatio=1/(1+m.totalDebt2TotalEquityAnnual);
+
+  let pe=(ok(m.peTTM)&&m.peTTM>0&&m.peTTM<2000)?m.peTTM:null;
+  let pe5yAvg=(ok(m.peBasicExclExtraTTM)&&m.peBasicExclExtraTTM>0)?m.peBasicExclExtraTTM:pe;
+
+  let analystBuyPct=null;
+  if(Array.isArray(recs)&&recs.length>0){
+    const r=recs[0];
+    const tot=(r.strongBuy||0)+(r.buy||0)+(r.hold||0)+(r.sell||0)+(r.strongSell||0);
+    if(tot>0) analystBuyPct=((r.strongBuy||0)+(r.buy||0))/tot*100;
+  }
+
+  const perf6m  = ok(m["26WeekPriceReturnDaily"])?m["26WeekPriceReturnDaily"]:null;
+  const perf12m = ok(m["52WeekPriceReturnDaily"])?m["52WeekPriceReturnDaily"]:null;
+  const epsGrowthYoY = ok(m.epsGrowthTTMYoy)?m.epsGrowthTTMYoy:null;
+
+  const currentPrice=(quote&&ok(quote.c)&&quote.c>0)?quote.c:null;
+  let analystTargetUpside=null;
+  if(target&&ok(target.targetMean)&&currentPrice){
+    analystTargetUpside=(target.targetMean-currentPrice)/currentPrice*100;
+    if(Math.abs(analystTargetUpside)>200) analystTargetUpside=null;
+  }
+
+  let earningsReactionPct=null;
+  if(ok(m.epsActual)&&ok(m.epsEstimate)&&m.epsEstimate!==0){
+    const s=(m.epsActual-m.epsEstimate)/Math.abs(m.epsEstimate)*100;
+    if(Math.abs(s)<=100) earningsReactionPct=s;
+  }
+
+  const currency=
+    t.endsWith(".SW")?"CHF":t.endsWith(".L")?"GBP":
+    [".PA",".DE",".MI",".MC",".AS",".BR",".HE",".ST",".CO"].some(s=>t.endsWith(s))?"EUR":
+    t.endsWith(".T")?"JPY":t.endsWith(".AX")?"AUD":t.endsWith(".KS")?"KRW":
+    t.endsWith(".TW")?"TWD":"USD";
+
+  return {roe,ebitMargin,equityRatio,pe,pe5yAvg,analystBuyPct,
+    earningsReactionPct,epsRevision4w:null,perf6m,perf12m,epsGrowthYoY,
+    analystTargetUpside,currentPrice,currency};
+}
+
+async function fetchWithRetry(stock, key){
+  let lastErr;
+  for(let i=0; i<=MAX_RETRIES; i++){
+    try { return await fetchFinnhubStock(stock, key); }
+    catch(e){
+      lastErr = e;
+      // Don't retry auth/rate errors
+      if(e.message.includes("401")||e.message.includes("403")||e.message.includes("429")) throw e;
+      if(i < MAX_RETRIES) await new Promise(r=>setTimeout(r, RETRY_DELAY_MS*(i+1)));
     }
-
-    function exportCSV(rows, filename) {
-      const csv = rows.map(row => row.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
-      const blob = new Blob(['\uFEFF' + csv], { type:'text/csv;charset=utf-8;' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1200);
+  }
+  // Fallback: use static training data so stock still gets a score
+  const staticEntry = STATIC_STOCK_DATA.find(s=>s.ticker===stock.ticker);
+  if(staticEntry){
+    let fallbackReason = String(lastErr && lastErr.message || "Unbekannt");
+    if(fallbackReason.includes("<!DOCTYPE html") || fallbackReason.includes("<html")) {
+      fallbackReason = "HTML-Antwort statt JSON von Finnhub";
     }
+    console.warn("Finnhub fehlgeschlagen fuer "+stock.ticker+", nutze statische Daten. Fehler: "+fallbackReason);
+    return {...staticEntry, _usedFallback:true, _fallbackError:fallbackReason};
+  }
+  throw lastErr;
+}
 
-    const CacheService = (() => {
-      const mem = new Map();
-      const prefix = 'levermann-ios-cache:';
-      const now = () => Date.now();
-      const keyFor = (url) => prefix + encodeURIComponent(url);
-      function get(url) {
-        const hit = mem.get(url);
-        if (hit && now() - hit.ts < CACHE_TTL_MS) return hit.data;
-        try {
-          const raw = localStorage.getItem(keyFor(url));
-          if (!raw) return null;
-          const parsed = JSON.parse(raw);
-          if (!parsed || now() - parsed.ts >= CACHE_TTL_MS) {
-            localStorage.removeItem(keyFor(url));
-            return null;
-          }
-          mem.set(url, parsed);
-          return parsed.data;
-        } catch { return null; }
-      }
-      function set(url, data) {
-        const entry = { data, ts: now() };
-        mem.set(url, entry);
-        try { localStorage.setItem(keyFor(url), JSON.stringify(entry)); } catch {}
-      }
-      return { get, set };
-    })();
+// ── UI Helpers ─────────────────────────────────────────────────────
+const scoreCol = s => s>=4?C.green:s>=0?C.yellow:C.red;
+const recBg    = r => r==="KAUFEN"?C.greenGlow:r==="VERKAUFEN"?C.redGlow:C.yellowGlow;
+const recBdr   = r => r==="KAUFEN"?C.green+"55":r==="VERKAUFEN"?C.red+"55":C.yellow+"55";
+const recCol   = r => r==="KAUFEN"?C.green:r==="VERKAUFEN"?C.red:C.yellow;
+const fmtS     = s => (s>0?"+":"")+s;
+const EU_FLAGS = ["🇩🇪","🇫🇷","🇬🇧","🇨🇭","🇳🇱","🇮🇹","🇪🇸","🇫🇮","🇸🇪","🇩🇰","🇧🇪","🇦🇹","🇵🇹","🇳🇴"];
+const REGIONS  = ["Alle","🇺🇸 USA","🇪🇺 Europa","🇯🇵 Japan","🇨🇳 China","🇮🇳 Indien","🇦🇺 Ozeanien","Andere"];
 
-    function calcScore(source, sector) {
-      const isFin = FINANCE_SECTORS.includes(sector);
-      const criteria = [];
-      const add = (id, name, score, value, reasoning, meta = {}) => criteria.push(Object.assign({ id, name, score, value, reasoning, active:true, applicable:true }, meta));
-      const { roe, ebitMargin, equityRatio, pe5yAvg, pe, analystBuyPct, earningsReactionPct, perf6m, perf12m, epsGrowthYoY, analystTargetUpside } = source;
+function regionMatch(s,f){
+  if(f==="Alle") return true;
+  if(f==="🇺🇸 USA") return s.region==="🇺🇸";
+  if(f==="🇪🇺 Europa") return EU_FLAGS.includes(s.region);
+  if(f==="🇯🇵 Japan") return s.region==="🇯🇵";
+  if(f==="🇨🇳 China") return s.region==="🇨🇳";
+  if(f==="🇮🇳 Indien") return s.region==="🇮🇳";
+  if(f==="🇦🇺 Ozeanien") return ["🇦🇺","🇳🇿"].includes(s.region);
+  return !["🇺🇸",...EU_FLAGS,"🇯🇵","🇨🇳","🇮🇳","🇦🇺","🇳🇿"].includes(s.region);
+}
 
-      if (!ok(roe)) add(1,'EK-Rendite',0,'n/v','Keine Daten',{ applicable:false });
-      else if (roe > 0.20) add(1,'EK-Rendite',1,fmtPctAbs(roe * 100),'>20%');
-      else if (roe >= 0.10) add(1,'EK-Rendite',0,fmtPctAbs(roe * 100),'10–20%');
-      else add(1,'EK-Rendite',-1,fmtPctAbs(roe * 100),'<10%');
+function exportCSV(rows,name){
+  const csv=rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}));
+  a.download=name; a.click();
+}
 
-      if (isFin) add(2,'EBIT-Marge',0,'n/a','Für Finanz-/Versicherungswerte nicht anwendbar',{ applicable:false });
-      else if (!ok(ebitMargin)) add(2,'EBIT-Marge',0,'n/v','Keine Daten',{ applicable:false });
-      else if (ebitMargin > 0.12) add(2,'EBIT-Marge',1,fmtPctAbs(ebitMargin * 100),'>12%');
-      else if (ebitMargin >= 0.06) add(2,'EBIT-Marge',0,fmtPctAbs(ebitMargin * 100),'6–12%');
-      else add(2,'EBIT-Marge',-1,fmtPctAbs(ebitMargin * 100),'<6%');
+// ── Components ─────────────────────────────────────────────────────
+function ScoreBar({score}){
+  return <div style={{width:"100%",height:3,background:C.border,borderRadius:2,overflow:"hidden"}}>
+    <div style={{height:"100%",width:((score+13)/26*100)+"%",background:scoreCol(score),borderRadius:2}}/>
+  </div>;
+}
 
-      if (!ok(equityRatio)) add(3,'EK-Quote',0,'n/v','Keine Daten',{ applicable:false });
-      else if (isFin) {
-        if (equityRatio > 0.10) add(3,'EK-Quote',1,fmtPctAbs(equityRatio * 100),'>10% (Bank/Versicherung)');
-        else if (equityRatio >= 0.05) add(3,'EK-Quote',0,fmtPctAbs(equityRatio * 100),'5–10% (Bank/Versicherung)');
-        else add(3,'EK-Quote',-1,fmtPctAbs(equityRatio * 100),'<5% (Bank/Versicherung)');
-      } else {
-        if (equityRatio > 0.25) add(3,'EK-Quote',1,fmtPctAbs(equityRatio * 100),'>25%');
-        else if (equityRatio >= 0.15) add(3,'EK-Quote',0,fmtPctAbs(equityRatio * 100),'15–25%');
-        else add(3,'EK-Quote',-1,fmtPctAbs(equityRatio * 100),'<15%');
-      }
+function Badge({rec}){
+  return <span style={{display:"inline-block",padding:"3px 9px",borderRadius:20,
+    background:recBg(rec),border:"1px solid "+recBdr(rec),
+    color:recCol(rec),fontSize:9,fontWeight:800,letterSpacing:0.8}}>{rec}</span>;
+}
 
-      if (!ok(pe5yAvg) || pe5yAvg <= 0) add(4,'KGV 5 Jahre',0,'n/v','Keine Daten',{ applicable:false });
-      else if (pe5yAvg < 12) add(4,'KGV 5 Jahre',1,Number(pe5yAvg).toFixed(1),'<12');
-      else if (pe5yAvg <= 16) add(4,'KGV 5 Jahre',0,Number(pe5yAvg).toFixed(1),'12–16');
-      else add(4,'KGV 5 Jahre',-1,Number(pe5yAvg).toFixed(1),'>16');
+function Dots({criteria}){
+  return <div style={{display:"flex",gap:2,justifyContent:"center"}}>
+    {(criteria||[]).map(c=><div key={c.id} style={{
+      width:4,height:4,borderRadius:"50%",flexShrink:0,
+      background:c.score===1?C.green:c.score===-1?C.red:C.muted,
+    }} title={c.name+": "+(c.score>0?"+1":c.score<0?"-1":"0")}/>)}
+  </div>;
+}
 
-      if (!ok(pe) || pe <= 0) add(5,'KGV aktuell',0,'n/v','Keine Daten',{ applicable:false });
-      else if (pe < 12) add(5,'KGV aktuell',1,Number(pe).toFixed(1),'<12');
-      else if (pe <= 16) add(5,'KGV aktuell',0,Number(pe).toFixed(1),'12–16');
-      else add(5,'KGV aktuell',-1,Number(pe).toFixed(1),'>16');
+function CriteriaPanel({stock}){
+  return <div style={{background:"#07080d",borderBottom:"1px solid "+C.border,
+    padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:5}}>
+    {(stock.criteria||[]).map(c=>(
+      <div key={c.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"7px 9px",borderRadius:7,
+        background:c.score===1?C.greenGlow:c.score===-1?C.redGlow:"#ffffff04",
+        border:"1px solid "+(c.score===1?C.green+"33":c.score===-1?C.red+"33":C.border)}}>
+        <span style={{width:24,height:24,borderRadius:"50%",flexShrink:0,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:9,fontWeight:700,fontFamily:C.mono,
+          background:c.score===1?C.green+"22":c.score===-1?C.red+"22":C.muted+"22",
+          border:"1.5px solid "+(c.score===1?C.green:c.score===-1?C.red:C.muted),
+          color:c.score===1?C.green:c.score===-1?C.red:C.muted}}>
+          {c.score>0?"+1":c.score<0?"-1":"0"}
+        </span>
+        <div>
+          <div style={{fontSize:10,fontWeight:600}}>{c.name}</div>
+          <div style={{fontSize:10,color:C.accent,fontFamily:C.mono}}>{c.value}</div>
+          <div style={{fontSize:9,color:C.subtext,marginTop:1}}>{c.reasoning}</div>
+        </div>
+      </div>
+    ))}
+  </div>;
+}
 
-      if (!ok(analystBuyPct)) add(6,'Analysten',0,'n/v','Keine Daten',{ applicable:false });
-      else if (analystBuyPct > 70) add(6,'Analysten',-1,fmtPctAbs(analystBuyPct, 0),'Kontraindikator: >70% bullisch');
-      else if (analystBuyPct >= 50) add(6,'Analysten',0,fmtPctAbs(analystBuyPct, 0),'Gemischtes Bild');
-      else add(6,'Analysten',1,fmtPctAbs(analystBuyPct, 0),'Kontraindikator: eher bearisch');
-
-      if (!ok(earningsReactionPct)) add(7,'Quartalsreaktion',0,'n/v','Keine Daten',{ applicable:false });
-      else if (earningsReactionPct > 1) add(7,'Quartalsreaktion',1,fmtPct(earningsReactionPct),'Positiv');
-      else if (earningsReactionPct >= -1) add(7,'Quartalsreaktion',0,fmtPct(earningsReactionPct),'Neutral');
-      else add(7,'Quartalsreaktion',-1,fmtPct(earningsReactionPct),'Negativ');
-
-      add(8,'Gewinnrevision',0,'deaktiviert','Bewusst deaktiviert: in diesem Single-File-Setup keine robuste Gewinnrevisionsquelle verfügbar.',{ active:false, applicable:false });
-
-      if (!ok(perf6m)) add(9,'Kurs 6M',0,'n/v','Keine Daten',{ applicable:false });
-      else if (perf6m > 5) add(9,'Kurs 6M',1,fmtPct(perf6m),'Stark');
-      else if (perf6m >= -5) add(9,'Kurs 6M',0,fmtPct(perf6m),'Seitwärts');
-      else add(9,'Kurs 6M',-1,fmtPct(perf6m),'Schwach');
-
-      if (!ok(perf12m)) add(10,'Kurs 1J',0,'n/v','Keine Daten',{ applicable:false });
-      else if (perf12m > 5) add(10,'Kurs 1J',1,fmtPct(perf12m),'Stark');
-      else if (perf12m >= -5) add(10,'Kurs 1J',0,fmtPct(perf12m),'Seitwärts');
-      else add(10,'Kurs 1J',-1,fmtPct(perf12m),'Schwach');
-
-      if (!ok(perf6m) || !ok(perf12m)) add(11,'Momentum',0,'n/v','Keine Daten',{ applicable:false });
-      else if (perf6m > perf12m) add(11,'Momentum',1,'6M > 1J','Beschleunigend');
-      else add(11,'Momentum',-1,'6M ≤ 1J','Abbremsend');
-
-      if (!ok(epsGrowthYoY)) add(12,'Gewinnwachstum',0,'n/v','Keine Daten',{ applicable:false });
-      else if (epsGrowthYoY > 0) add(12,'Gewinnwachstum',1,fmtPct(epsGrowthYoY),'Wachstum');
-      else if (epsGrowthYoY === 0) add(12,'Gewinnwachstum',0,'0.0%','Unverändert');
-      else add(12,'Gewinnwachstum',-1,fmtPct(epsGrowthYoY),'Rückgang');
-
-      if (!ok(analystTargetUpside)) add(13,'Kurspotenzial',0,'n/v','Keine Daten',{ applicable:false });
-      else if (analystTargetUpside > 15) add(13,'Kurspotenzial',1,fmtPct(analystTargetUpside),'>15%');
-      else if (analystTargetUpside >= 0) add(13,'Kurspotenzial',0,fmtPct(analystTargetUpside),'0–15%');
-      else add(13,'Kurspotenzial',-1,fmtPct(analystTargetUpside),'Negativ');
-
-      const totalScore = criteria.filter(c => c.active).reduce((sum, c) => sum + c.score, 0);
-      const recommendation = totalScore >= 4 ? 'KAUFEN' : totalScore <= 2 ? 'VERKAUFEN' : 'HALTEN';
-      const applicable = criteria.filter(c => c.active && c.applicable).length;
-      const available = criteria.filter(c => c.active && c.applicable && c.value !== 'n/v').length;
-      const dataCompleteness = applicable ? Math.round((available / applicable) * 100) : 0;
-      return { criteria, totalScore, recommendation, dataCompleteness };
-    }
-
-    const FinnhubService = (() => {
-      const controllers = new Set();
-      const addController = (ctrl) => { controllers.add(ctrl); return ctrl; };
-      const removeController = (ctrl) => controllers.delete(ctrl);
-      const buildUrl = (path, key) => `https://finnhub.io/api/v1/${path}&token=${encodeURIComponent(key)}`;
-
-      async function request(path, key, signal) {
-        const url = buildUrl(path, key);
-        const cached = CacheService.get(url);
-        if (cached) return cached;
-        let resp;
-        try {
-          resp = await fetch(url, { method:'GET', mode:'cors', credentials:'omit', headers:{ 'Accept':'application/json' }, signal });
-        } catch (err) {
-          if (err && err.name === 'AbortError') throw err;
-          throw new Error(`Netzwerk: ${err.message} — CORS oder Verbindung. Key korrekt?`);
-        }
-        if (resp.status === 401 || resp.status === 403) throw new Error(`API Key ungültig (${resp.status}) — Key auf finnhub.io prüfen`);
-        if (resp.status === 429) throw new Error('Rate Limit (429) — 60 Sek. warten, dann erneut starten');
-        if (!resp.ok) throw new Error(`Finnhub HTTP ${resp.status}`);
-        const raw = await resp.text();
-        if (!raw || raw.trim() === '') { CacheService.set(url, {}); return {}; }
-        let data;
-        try { data = JSON.parse(raw); } catch { throw new Error(`JSON Fehler (${raw.slice(0,40)})`); }
-        if (data && data.error) { CacheService.set(url, {}); return {}; }
-        CacheService.set(url, data);
-        return data;
-      }
-
-      function inferCurrency(ticker) {
-        if (ticker.endsWith('.SW')) return 'CHF';
-        if (ticker.endsWith('.L')) return 'GBP';
-        if (['.PA','.DE','.MI','.MC','.AS','.BR','.HE','.ST','.CO'].some(s => ticker.endsWith(s))) return 'EUR';
-        if (ticker.endsWith('.T')) return 'JPY';
-        if (ticker.endsWith('.AX')) return 'AUD';
-        if (ticker.endsWith('.KS')) return 'KRW';
-        if (ticker.endsWith('.TW')) return 'TWD';
-        return 'USD';
-      }
-
-      async function fetchStock(stock, key, signal) {
-        const t = stock.ticker;
-        const metrics = await request(`stock/metric?symbol=${t}&metric=all`, key, signal);
-        await sleep(250);
-        const recs = await request(`recommendation?symbol=${t}`, key, signal);
-        await sleep(250);
-        const quote = await request(`quote?symbol=${t}`, key, signal);
-        await sleep(250);
-        const target = await request(`price-target?symbol=${t}`, key, signal);
-
-        const m = (metrics && metrics.metric) || {};
-        const nz = (v) => v !== null && v !== undefined && Number.isFinite(v) && v !== 0;
-        let roe = nz(m.roeTTM) ? m.roeTTM / 100 : null;
-        if (roe !== null && (roe > 5 || roe < -2)) roe = null;
-        let ebitMargin = null;
-        if (nz(m.ebitdMarginTTM)) ebitMargin = m.ebitdMarginTTM / 100;
-        else if (nz(m.netProfitMarginTTM)) ebitMargin = m.netProfitMarginTTM / 100;
-        let equityRatio = null;
-        if (nz(m.totalDebt2TotalEquityAnnual) && m.totalDebt2TotalEquityAnnual >= 0) equityRatio = 1 / (1 + m.totalDebt2TotalEquityAnnual);
-        let pe = (nz(m.peTTM) && m.peTTM > 0 && m.peTTM < 2000) ? m.peTTM : null;
-        let pe5yAvg = (nz(m.peBasicExclExtraTTM) && m.peBasicExclExtraTTM > 0) ? m.peBasicExclExtraTTM : pe;
-        let analystBuyPct = null;
-        if (Array.isArray(recs) && recs.length > 0) {
-          const r = recs[0];
-          const total = (r.strongBuy || 0) + (r.buy || 0) + (r.hold || 0) + (r.sell || 0) + (r.strongSell || 0);
-          if (total > 0) analystBuyPct = ((r.strongBuy || 0) + (r.buy || 0)) / total * 100;
-        }
-        const perf6m = nz(m['26WeekPriceReturnDaily']) ? m['26WeekPriceReturnDaily'] : null;
-        const perf12m = nz(m['52WeekPriceReturnDaily']) ? m['52WeekPriceReturnDaily'] : null;
-        const epsGrowthYoY = nz(m.epsGrowthTTMYoy) ? m.epsGrowthTTMYoy : null;
-        const currentPrice = quote && nz(quote.c) && quote.c > 0 ? quote.c : null;
-        let analystTargetUpside = null;
-        if (target && nz(target.targetMean) && currentPrice) {
-          analystTargetUpside = ((target.targetMean - currentPrice) / currentPrice) * 100;
-          if (Math.abs(analystTargetUpside) > 200) analystTargetUpside = null;
-        }
-        let earningsReactionPct = null;
-        if (nz(m.epsActual) && nz(m.epsEstimate) && m.epsEstimate !== 0) {
-          const surprise = ((m.epsActual - m.epsEstimate) / Math.abs(m.epsEstimate)) * 100;
-          if (Math.abs(surprise) <= 100) earningsReactionPct = surprise;
-        }
-        return {
-          roe, ebitMargin, equityRatio, pe, pe5yAvg, analystBuyPct,
-          earningsReactionPct, perf6m, perf12m, epsGrowthYoY,
-          analystTargetUpside, currentPrice, currency: inferCurrency(t),
-          _source:'live'
-        };
-      }
-
-      async function fetchWithRetry(stock, key) {
-        let lastErr = null;
-        const controller = addController(new AbortController());
-        const signal = controller.signal;
-        try {
-          for (let i = 0; i <= MAX_RETRIES; i++) {
-            try { return await fetchStock(stock, key, signal); }
-            catch (err) {
-              lastErr = err;
-              if (err && err.name === 'AbortError') throw err;
-              const msg = String(err && err.message || err);
-              if (msg.includes('401') || msg.includes('403') || msg.includes('429') || msg.includes('ungültig')) throw err;
-              if (i < MAX_RETRIES) await sleep(RETRY_DELAY_MS * (i + 1));
-            }
-          }
-          const fallback = STATIC_STOCK_DATA.find(s => s.ticker === stock.ticker);
-          if (fallback) return Object.assign({}, fallback, { _source:'fallback', _fallbackError:lastErr ? String(lastErr.message || lastErr) : 'unbekannt' });
-          throw lastErr || new Error('Unbekannter Finnhub-Fehler');
-        } finally {
-          removeController(controller);
-        }
-      }
-
-      function abortAll() {
-        controllers.forEach(ctrl => { try { ctrl.abort(); } catch {} });
-        controllers.clear();
-      }
-      return { fetchWithRetry, abortAll };
-    })();
-
-    const state = {
-      mode:'static',
-      apiKey:'',
-      count:Math.min(50, STATIC_STOCK_DATA.length),
-      running:false,
-      results:[],
-      errors:[],
-      logs:[],
-      progress:0,
-      curTicker:'',
-      done:false,
-      activeTab:'scanner',
-      regionFilter:'Alle',
-      expandedTicker:null,
-      reportSort:'score',
-      reportFilter:'ALLE',
-      stopRequested:false,
-      analysisToken:0,
-      lastRunMode:'static'
-    };
-
-    let renderQueued = false;
-    function setState(patch){ Object.assign(state, patch); queueRender(); }
-    function queueRender(){ if(renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render(); }); }
-    function appendLog(entry){ state.logs = [entry, ...state.logs].slice(0, 250); queueRender(); }
-    function enrichStatic(stock, source='static'){ return Object.assign({}, stock, calcScore(stock, stock.sector), { _source:source }); }
-
-    function buildLogEntry(stock, source, extra = {}) {
-      return {
-        ts: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
-        ticker: stock.ticker,
-        name: stock.name,
-        source,
-        message: source === 'live' ? 'Daten erfolgreich aus Finnhub geladen.' : source === 'fallback' ? 'Finnhub fehlgeschlagen, statische Fallback-Daten verwendet.' : 'Statischer Modus – lokale Datenbasis verwendet.',
-        error: extra.error || '',
-        score: extra.score ?? null
-      };
-    }
-
-    function runStatic(){
-      const maxN = Math.min(state.count, STATIC_STOCK_DATA.length);
-      const data = STATIC_STOCK_DATA.slice(0, maxN).map(s => enrichStatic(s, 'static'));
-      const logs = data.map(s => buildLogEntry(s, 'static', { score:s.totalScore })).reverse();
-      setState({ results:data, errors:[], logs, progress:100, done:true, running:false, curTicker:'', lastRunMode:'static' });
-    }
-
-    async function runFinnhub(){
-      const key = state.apiKey.trim();
-      if(!key || state.running) return;
-      const token = Date.now();
-      setState({ running:true, done:false, results:[], errors:[], logs:[], progress:0, curTicker:'', stopRequested:false, analysisToken:token, lastRunMode:'finnhub' });
-      const batch = STATIC_STOCK_DATA.slice(0, Math.min(state.count, STATIC_STOCK_DATA.length));
-      const results = [];
-      const errors = [];
-      let completed = 0;
-      for(let i=0; i<batch.length; i+=CONCURRENCY){
-        if(state.stopRequested || state.analysisToken !== token) break;
-        const chunk = batch.slice(i, i + CONCURRENCY);
-        setState({ curTicker: chunk.map(s => s.ticker).join(', ') });
-        const settled = await Promise.allSettled(chunk.map(async stock => {
-          const raw = await FinnhubService.fetchWithRetry(stock, key);
-          return Object.assign({}, stock, raw, calcScore(raw, stock.sector));
-        }));
-        const batchResults = [];
-        const batchErrors = [];
-        settled.forEach((entry, idx) => {
-          const stock = chunk[idx];
-          if(entry.status === 'fulfilled'){
-            batchResults.push(entry.value);
-            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore }));
-          } else if (!(entry.reason && entry.reason.name === 'AbortError')) {
-            batchErrors.push(Object.assign({}, stock, { error: entry.reason?.message || 'Fehler' }));
-            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null }));
-          }
-        });
-        completed += chunk.length;
-        results.push(...batchResults);
-        errors.push(...batchErrors);
-        setState({ results:results.slice(), errors:errors.slice(), progress:Math.round(completed / batch.length * 100) });
-        if(state.stopRequested || state.analysisToken !== token) break;
-        if(i + CONCURRENCY < batch.length) await sleep(BATCH_DELAY_MS);
-      }
-      setState({ running:false, done:true, curTicker:'', progress:state.stopRequested ? state.progress : 100 });
-    }
-
-    function stopAnalysis(){
-      state.stopRequested = true;
-      FinnhubService.abortAll();
-      appendLog({ ts:new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }), ticker:'—', name:'Analyse gestoppt', source:'static', message:'Lauf durch Benutzer beendet.', error:'', score:null });
-      setState({ running:false, done:true, curTicker:'' });
-    }
-
-    function getSummary(){
-      const results = state.results;
-      const live = results.filter(r => (r._source || 'static') === 'live').length;
-      const fallback = results.filter(r => (r._source || 'static') === 'fallback').length;
-      const statisch = Math.max(0, results.length - live - fallback);
-      const average = results.length ? (results.reduce((sum, r) => sum + (r.totalScore || 0), 0) / results.length).toFixed(1) : '—';
-      const best = results.slice().sort((a,b) => b.totalScore - a.totalScore || a.name.localeCompare(b.name, 'de'))[0] || null;
-      return { live, fallback, statisch, average, best };
-    }
-
-    function renderScoreBar(score){ const width = Math.max(0, Math.min(100, ((score + 12) / 24) * 100)); return `<div class="score-bar"><span style="width:${width}%;background:${scoreFillColor(score)}"></span></div>`; }
-    function renderBadge(rec){ return `<span class="badge ${recClass(rec)}">${escapeHtml(rec)}</span>`; }
-    function renderSourceBadge(source){ return `<span class="source-badge ${sourceClass(source)}">${escapeHtml(sourceLabel(source))}</span>`; }
-    function renderDots(criteria){ return `<div class="dots">${criteria.filter(c => c.active).map(c => `<span class="dot ${c.score > 0 ? 'pos' : c.score < 0 ? 'neg' : ''}"></span>`).join('')}</div>`; }
-
-    function renderHero(variant){
-      const maxN = Math.min(state.count, STATIC_STOCK_DATA.length);
-      const summary = getSummary();
-      const title = variant === 'report' ? 'Ergebnis- <span class="accent">Dashboard</span>' : 'iOS-native <span class="accent">Scanner</span>';
-      const text = variant === 'report'
-        ? 'Verdichtete Ergebnisansicht mit Top-Kandidat, Quellenmix und direktem Zugriff auf Quellen-Log und Kriterien-Transparenz.'
-        : 'Apple-/iOS-inspirierte Oberfläche mit Glassmorphism, weicheren Karten, Score-Drilldown per Klick und einem Log, das Live- und Fallback-Quellen transparent trennt.';
-      return `
-        <section class="hero glass">
-          <div class="hero-grid">
-            <div class="hero-copy">
-              <div class="hero-tag">${variant === 'report' ? 'Report & Diagnose' : 'Apple / iOS Native Style'}</div>
-              <div class="hero-title">${title}</div>
-              <p>${text}</p>
-              <div class="hero-badges">
-                <span class="hero-badge">${state.mode === 'finnhub' ? '📡 Finnhub-Live-Modus aktivierbar' : '⚡ Statischer Schnellmodus'}</span>
-                <span class="hero-badge">🧠 ${ACTIVE_CRITERIA} aktive Kriterien</span>
-                <span class="hero-badge">🔎 Score-Klick = Kriterien-Drilldown</span>
-                <span class="hero-badge">🪵 Quellen-Log integriert</span>
-              </div>
-            </div>
-            <div class="hero-metrics">
-              <div class="metric-card blue">
-                <div><div class="metric-label">Modus</div><div class="metric-value">${state.mode === 'finnhub' ? 'LIVE' : 'STATIC'}</div></div>
-                <div class="metric-sub">${state.mode === 'finnhub' ? 'Echtdaten mit transparentem Fallback' : 'Sofortige Analyse ohne API-Key'}</div>
-              </div>
-              <div class="metric-card green">
-                <div><div class="metric-label">Ergebnisse</div><div class="metric-value">${state.results.length || maxN}</div></div>
-                <div class="metric-sub">${state.results.length ? `Ø Score ${summary.average}` : `Bis zu ${maxN} Werte im nächsten Lauf`}</div>
-              </div>
-              <div class="metric-card yellow">
-                <div><div class="metric-label">Top Kandidat</div><div class="metric-value">${summary.best ? escapeHtml(summary.best.ticker) : '—'}</div></div>
-                <div class="metric-sub">${summary.best ? `${escapeHtml(summary.best.name)} · ${fmtScore(summary.best.totalScore)} Punkte` : 'Starte eine Analyse für Ranking und Empfehlungen.'}</div>
-              </div>
-              <div class="metric-card">
-                <div><div class="metric-label">Quellenmix</div><div class="metric-value">${state.results.length ? `${summary.live}/${summary.fallback}/${summary.statisch}` : '0/0/0'}</div></div>
-                <div class="metric-sub">Live / Fallback / Statisch transparent markiert</div>
-              </div>
-            </div>
+function ResultsTable({results,isFinnhub}){
+  const [exp,setExp] = useState(null);
+  const [reg,setReg] = useState("Alle");
+  const top30 = useMemo(()=>
+    results.filter(r=>regionMatch(r,reg)).sort((a,b)=>b.totalScore-a.totalScore).slice(0,30),
+    [results,reg]);
+  if(!results.length) return null;
+  return <div>
+    <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
+      {REGIONS.map(r=><button key={r} onClick={()=>setReg(r)} style={{
+        padding:"4px 11px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:C.sans,transition:"all .15s",
+        border:"1px solid "+(reg===r?C.accent:C.border),
+        background:reg===r?C.accentGlow:"transparent",
+        color:reg===r?C.accent:C.subtext}}>{r}</button>)}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"34px 1fr 62px 88px 52px 72px",
+      padding:"7px 13px",borderBottom:"1px solid "+C.border,fontSize:9,color:C.muted,
+      letterSpacing:1.5,textTransform:"uppercase",fontFamily:C.mono,
+      background:C.surface,borderRadius:"10px 10px 0 0"}}>
+      <span>#</span><span>Name</span>
+      <span style={{textAlign:"center"}}>Score</span>
+      <span style={{textAlign:"center"}}>Signal</span>
+      <span style={{textAlign:"center"}}>Daten</span>
+      <span style={{textAlign:"right"}}>Sektor</span>
+    </div>
+    {top30.map((s,i)=><div key={s.ticker}>
+      <div onClick={()=>setExp(exp===s.ticker?null:s.ticker)}
+        style={{display:"grid",gridTemplateColumns:"34px 1fr 62px 88px 52px 72px",
+          padding:"11px 13px",borderBottom:"1px solid "+C.border,cursor:"pointer",
+          background:exp===s.ticker?"#ffffff07":"transparent",transition:"background .12s"}}>
+        <span style={{fontFamily:C.mono,fontSize:12,fontWeight:700,color:i<3?C.accent:C.muted}}>{i+1}</span>
+        <div>
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <span>{s.region}</span>
+            <span style={{fontWeight:600,fontSize:13}}>{s.name}</span>
           </div>
-        </section>
-      `;
-    }
-
-    function renderCriteriaPanel(stock){
-      const active = stock.criteria.filter(c => c.active);
-      const activeSum = active.reduce((sum, c) => sum + c.score, 0);
-      return `
-        <div class="criteria-shell">
-          <div class="criteria-header">
-            <div>
-              <div class="criteria-title">Score-Drilldown · ${escapeHtml(stock.name)} (${escapeHtml(stock.ticker)})</div>
-              <div class="criteria-sub">Jedes Kriterium zeigt Rohwert, Regel und den Beitrag zum finalen Score. Kriterium 8 bleibt bewusst deaktiviert und zahlt nicht auf den Endscore ein.</div>
-            </div>
-            <div class="criteria-sum">
-              <div><strong>Finaler Score:</strong> ${fmtScore(stock.totalScore)}</div>
-              <div style="margin-top:4px"><strong>Summe aktive Kriterien:</strong> ${fmtScore(activeSum)} · <strong>Signal:</strong> ${stock.recommendation}</div>
-            </div>
-          </div>
-          <div class="criteria-grid">
-            ${stock.criteria.map(c => {
-              const cls = !c.active ? 'na' : c.score > 0 ? 'pos' : c.score < 0 ? 'neg' : '';
-              const bubble = !c.active ? 'off' : c.score > 0 ? '+1' : c.score < 0 ? '-1' : '0';
-              const impact = !c.active ? 'Kein Beitrag zum Finalscore' : c.score > 0 ? 'Zahlt positiv auf den Score ein' : c.score < 0 ? 'Zahlt negativ auf den Score ein' : 'Neutraler Beitrag';
-              return `
-                <div class="criterion ${cls}">
-                  <div class="bubble">${bubble}</div>
-                  <div>
-                    <div class="criterion-title">#${c.id} · ${escapeHtml(c.name)}</div>
-                    <div class="criterion-value">${escapeHtml(c.value)}</div>
-                    <div class="criterion-reason">${escapeHtml(c.reasoning)}</div>
-                    <div class="criterion-impact">${impact}</div>
-                  </div>
-                </div>
-              `;
-            }).join('')}
+          <div style={{fontSize:10,color:C.subtext,fontFamily:C.mono,marginTop:1}}>
+            {s.ticker}{s.currentPrice!=null&&<span style={{color:C.muted,marginLeft:6}}>{s.currency} {s.currentPrice.toFixed(2)}</span>}
           </div>
         </div>
-      `;
-    }
-
-    function renderSourceLog(){
-      const summary = getSummary();
-      const items = state.logs.length ? state.logs.map(entry => `
-        <div class="log-item">
-          <div class="log-row">
-            <div>
-              <div class="log-name">${escapeHtml(entry.ticker)} · ${escapeHtml(entry.name)}</div>
-              <div class="log-meta">${escapeHtml(entry.ts)} · ${escapeHtml(sourceLogLabel(entry.source))}${entry.score !== null && entry.score !== undefined ? ` · Score ${fmtScore(entry.score)}` : ''}</div>
-            </div>
-            <span class="log-src ${sourceClass(entry.source)}">${escapeHtml(sourceLabel(entry.source))}</span>
-          </div>
-          <div class="log-error" style="color:var(--subtext)">${escapeHtml(entry.message)}</div>
-          ${entry.error ? `<div class="log-error">Grund: ${escapeHtml(entry.error)}</div>` : ''}
+        <div style={{textAlign:"center"}}>
+          <span style={{fontFamily:C.mono,fontSize:17,fontWeight:700,color:scoreCol(s.totalScore),lineHeight:1}}>{fmtS(s.totalScore)}</span>
+          <div style={{marginTop:4}}><ScoreBar score={s.totalScore}/></div>
         </div>
-      `).join('') : `<div class="placeholder-text">Noch kein Log vorhanden. Starte eine Analyse, damit Live- und Fallback-Quellen pro Aktie protokolliert werden.</div>`;
-      return `
-        <section class="panel glass">
-          <div class="section-head">
-            <div>
-              <div class="section-kicker">Source & Fallback Diagnostics</div>
-              <div class="section-title">Quellen-Log</div>
-              <div class="section-desc">Zeigt je Aktie, ob der Datensatz aus Finnhub oder dem statischen Fallback stammt. Im statischen Modus werden lokale Datensätze entsprechend markiert.</div>
-            </div>
-            <div class="section-pills">
-              <span class="section-pill">LIVE ${summary.live}</span>
-              <span class="section-pill">FALLBACK ${summary.fallback}</span>
-              <span class="section-pill">STATISCH ${summary.statisch}</span>
-            </div>
-          </div>
-          <div class="log-list">${items}</div>
-        </section>
-      `;
-    }
-
-    function renderResultsTable(){
-      if(!state.results.length) return '';
-      const filtered = state.results.filter(r => regionMatch(r, state.regionFilter)).slice().sort((a,b) => b.totalScore - a.totalScore || a.name.localeCompare(b.name, 'de'));
-      const top30 = filtered.slice(0, 30);
-      const top = top30[0];
-      const buyCount = filtered.filter(r => r.recommendation === 'KAUFEN').length;
-      return `
-        <section class="panel glass">
-          <div class="section-head">
-            <div>
-              <div class="section-kicker">Scanner Output</div>
-              <div class="section-title">Top-30 Ergebnisansicht</div>
-              <div class="section-desc">Klicke direkt auf den Score einer Aktie, um alle 13 Kriterien und deren Beitrag zum Endscore aufzuklappen.</div>
-            </div>
-            <div class="section-pills">
-              <span class="section-pill">${filtered.length} Werte im Filter</span>
-              <span class="section-pill">${buyCount} × KAUFEN</span>
-              <span class="section-pill">Top: ${top ? `${escapeHtml(top.ticker)} ${fmtScore(top.totalScore)}` : '—'}</span>
-            </div>
-          </div>
-          <div class="chips">${REGIONS.map(region => `<button class="chip ${state.regionFilter === region ? 'active-default' : ''}" data-action="set-region" data-region="${escapeHtml(region)}">${escapeHtml(region)}</button>`).join('')}</div>
-          <div class="table-shell">
-            <div class="table-head results" style="grid-template-columns:34px 1fr 82px 92px 58px 76px;">
-              <span>#</span><span>Name</span><span style="text-align:center">Score</span><span style="text-align:center">Signal</span><span style="text-align:center">Daten</span><span style="text-align:right">Sektor</span>
-            </div>
-            ${top30.map((stock, index) => {
-              const expanded = state.expandedTicker === stock.ticker;
-              return `
-                <div class="table-row results ${expanded ? 'expanded' : ''}" style="grid-template-columns:34px 1fr 82px 92px 58px 76px;">
-                  <span class="rank ${index < 3 ? 'top' : ''}">${index + 1}</span>
-                  <div>
-                    <div class="name-main"><span>${escapeHtml(stock.region)}</span><span>${escapeHtml(stock.name)}</span>${renderSourceBadge(stock._source || 'static')}</div>
-                    <div class="name-sub">${escapeHtml(stock.ticker)} · ${ok(stock.currentPrice) ? `${escapeHtml(stock.currency || '')} ${Number(stock.currentPrice).toFixed(2)}` : '—'}</div>
-                  </div>
-                  <div style="text-align:center">
-                    <button class="score-btn" data-action="toggle-expand" data-ticker="${escapeHtml(stock.ticker)}" title="Score-Drilldown öffnen">
-                      <span class="score-value ${scoreClass(stock.totalScore)}">${fmtScore(stock.totalScore)}</span>
-                      ${renderScoreBar(stock.totalScore)}
-                    </button>
-                  </div>
-                  <div style="text-align:center">${renderBadge(stock.recommendation)}</div>
-                  <div style="text-align:center"><span class="mono ${dataClass(stock.dataCompleteness || 0)}" style="font-size:10px;font-weight:700">${stock.dataCompleteness || 0}%</span></div>
-                  <div style="text-align:right;font-size:10px;color:var(--subtext)">${escapeHtml(stock.sector)}</div>
-                </div>
-                ${expanded ? renderCriteriaPanel(stock) : ''}
-              `;
-            }).join('')}
-            <div class="footer-note">${state.lastRunMode === 'finnhub' ? 'Echte Finnhub-Daten bzw. transparenter Fallback' : 'Statische Datenbasis (~Anfang 2025)'} · Deterministisches Levermann-Scoring · 12 aktive Kriterien + 1 bewusst deaktiviert · Keine Anlageberatung</div>
-          </div>
-          <div class="legend">
-            <span class="legend-item"><span class="legend-box" style="background:var(--accent-glow);border-color:rgba(10,132,255,.18)"></span>statisch</span>
-            <span class="legend-item"><span class="legend-box" style="background:var(--green-glow);border-color:rgba(48,209,88,.18)"></span>live</span>
-            <span class="legend-item"><span class="legend-box" style="background:var(--yellow-glow);border-color:rgba(255,159,10,.18)"></span>fallback</span>
-          </div>
-        </section>
-      `;
-    }
-
-    function renderScannerTab(){
-      const maxN = Math.min(state.count, STATIC_STOCK_DATA.length);
-      return `
-        ${renderHero('scanner')}
-        <div class="stack">
-          <section class="card glass">
-            <div class="section-head">
-              <div>
-                <div class="section-kicker">Mode Selection</div>
-                <div class="section-title">Analysemodus wählen</div>
-                <div class="section-desc">Apple-/iOS-artiges Layout mit möglichst klarer, ruhiger Oberfläche für deinen persönlichen Einsatz.</div>
-              </div>
-            </div>
-            <div class="mode-grid">
-              ${[
-                { id:'static', icon:'⚡', title:'Statisch', sub:'Sofort · Kein Key nötig · ~Anfang 2025' },
-                { id:'finnhub', icon:'📡', title:'Finnhub Live', sub:'Echtdaten · persönliches Tool · Key nötig' }
-              ].map(mode => `
-                <button class="mode-option ${state.mode === mode.id ? 'active' : ''}" data-action="set-mode" data-mode="${escapeHtml(mode.id)}">
-                  <div class="mode-icon">${mode.icon}</div>
-                  <div class="mode-title ${state.mode === mode.id ? 'active' : ''}">${escapeHtml(mode.title)}</div>
-                  <div class="mode-sub">${escapeHtml(mode.sub)}</div>
-                </button>
-              `).join('')}
-            </div>
-          </section>
-
-          ${state.mode === 'finnhub' ? `
-            <section class="card glass">
-              <div class="section-head">
-                <div>
-                  <div class="section-kicker">API Access</div>
-                  <div class="section-title">🔑 Finnhub API Key</div>
-                  <div class="section-desc">Der Key bleibt für dein persönliches Tool bewusst clientseitig. Das Log zeigt dir pro Aktie, ob Daten live oder per Fallback kamen.</div>
-                </div>
-              </div>
-              <input class="field" id="apiKeyInput" type="password" value="${escapeHtml(state.apiKey)}" placeholder="Kostenloser Key von finnhub.io" autocomplete="off" />
-              <div class="api-note">
-                1. <a href="https://finnhub.io" target="_blank" rel="noopener noreferrer">finnhub.io</a> → registrieren → Dashboard → API Key kopieren<br />
-                2. Key hier einfügen → Analyse starten<br />
-                <span class="warn">⚠ Wenn Finnhub je Aktie scheitert, protokolliert das Tool den Fallback im Log und markiert den Datensatz sichtbar.</span>
-              </div>
-            </section>
-          ` : ''}
-
-          <section class="card glass">
-            <div class="section-head">
-              <div>
-                <div class="section-kicker">Run Configuration</div>
-                <div class="section-title">Analyseumfang & Start</div>
-                <div class="section-desc">Definiere, wie viele Titel analysiert werden. Der Start-CTA bleibt bewusst prominent und einfach zu bedienen.</div>
-              </div>
-              <div class="section-pills">
-                <span class="section-pill">${state.mode === 'finnhub' ? 'Live-Scan' : 'Static-Scan'}</span>
-                <span class="section-pill">${ACTIVE_CRITERIA} Kriterien aktiv</span>
-              </div>
-            </div>
-            <div class="controls-head">
-              <div class="controls-value"><span class="count-value">${maxN}</span><span style="font-size:13px;color:var(--subtext)">Aktien</span>${state.mode === 'static' ? '<span class="small-pill">⚡ Sofort</span>' : ''}</div>
-              ${state.mode === 'finnhub' ? `<span class="estimate">~${Math.ceil(maxN / 50) * 4}–${Math.ceil(maxN / 50) * 7} Min.</span>` : ''}
-            </div>
-            <input id="countInput" type="range" min="10" max="${STATIC_STOCK_DATA.length}" step="5" value="${maxN}" ${state.running ? 'disabled' : ''} />
-            <div class="ticks">${TICK_VALUES.map(v => `<button class="tick-btn ${state.count === v ? 'active' : ''}" data-action="set-count" data-value="${v}">${v}</button>`).join('')}</div>
-            <div class="btn-row">
-              <button class="btn-primary" data-action="run-analysis" ${(state.running || (state.mode === 'finnhub' && !state.apiKey.trim())) ? 'disabled' : ''}>${state.running ? `Analysiere... (${state.progress}%)` : state.done ? 'Erneut analysieren' : `${maxN} Aktien analysieren`}</button>
-              ${state.running ? '<button class="btn-secondary" data-action="stop-analysis">Stop</button>' : ''}
-            </div>
-            <div class="note">Neu: iOS-inspirierte Optik, Score-Klick zum Aufklappen der 13 Kriterien und ein Quellen-Log, das Finnhub-Live und statischen Fallback je Aktie nachvollziehbar macht.</div>
-          </section>
-
-          ${state.running ? `
-            <section class="card glass">
-              <div class="section-head">
-                <div>
-                  <div class="section-kicker">Live Progress</div>
-                  <div class="section-title">Analyse läuft</div>
-                </div>
-                <div class="section-pill">${state.progress}%</div>
-              </div>
-              <div class="progress-top"><span class="progress-title">Analysiere: ${escapeHtml(state.curTicker || '…')}</span><span class="progress-pct">${state.progress}%</span></div>
-              <div class="progress-bar"><div class="progress-fill" style="width:${state.progress}%"></div></div>
-              ${state.errors.length ? `<details><summary>${state.errors.length} Fehler</summary><div class="error-list">${state.errors.map(e => `${escapeHtml(e.ticker)}: ${escapeHtml(e.error)}`).join(' | ')}</div></details>` : ''}
-            </section>
-          ` : ''}
-
-          <div class="log-wrap">
-            <div>${renderResultsTable()}</div>
-            <div>${renderSourceLog()}</div>
-          </div>
-
-          ${!state.running && !state.done ? `
-            <section class="placeholder glass">
-              <div class="placeholder-icon">🌍</div>
-              <div class="placeholder-title">MSCI ACWI Levermann-Screening</div>
-              <div class="placeholder-text">Modus wählen → Anzahl einstellen → Analyse starten<br /><span style="font-size:11px;color:var(--muted)">${STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring</span></div>
-            </section>
-          ` : ''}
+        <div style={{textAlign:"center"}}><Badge rec={s.recommendation}/></div>
+        <div style={{textAlign:"center"}}>
+          <span style={{fontSize:10,fontFamily:C.mono,fontWeight:600,
+            color:(s.dataCompleteness||0)>=70?C.green:(s.dataCompleteness||0)>=40?C.yellow:C.red}}>
+            {s.dataCompleteness||0}%</span>
         </div>
-      `;
-    }
+        <div style={{textAlign:"right",fontSize:10,color:C.subtext}}>{s.sector}</div>
+      </div>
+      {exp===s.ticker&&<CriteriaPanel stock={s}/>}
+    </div>)}
+    <div style={{padding:"10px 13px",fontSize:10,color:C.muted,textAlign:"center",borderTop:"1px solid "+C.border,lineHeight:1.6}}>
+      {isFinnhub?"Echte Finnhub-Daten":"Daten: KI-Trainingswissen ~Anfang 2025"} · Deterministisches Levermann-Scoring · Keine Anlageberatung
+    </div>
+  </div>;
+}
 
-    function renderReportTab(){
-      if(!state.results.length){
-        return `<section class="placeholder glass"><div class="placeholder-icon">📋</div><div class="placeholder-title">Noch keine Ergebnisse</div><div class="placeholder-text">Starte zuerst eine Analyse im Scanner-Tab.</div></section>`;
-      }
-      const filtered = state.results.filter(r => state.reportFilter === 'ALLE' || r.recommendation === state.reportFilter);
-      const sorted = filtered.slice().sort((a,b) => {
-        if(state.reportSort === 'name') return a.name.localeCompare(b.name, 'de');
-        if(state.reportSort === 'rating') return recommendationIndex(a.recommendation) - recommendationIndex(b.recommendation);
-        return b.totalScore - a.totalScore || a.name.localeCompare(b.name, 'de');
+function ReportTab({results}){
+  const [sort,setSort]=useState("score");
+  const [filter,setFilter]=useState("ALLE");
+  const sorted=useMemo(()=>[...results]
+    .filter(r=>filter==="ALLE"||r.recommendation===filter)
+    .sort((a,b)=>sort==="name"?a.name.localeCompare(b.name):
+      sort==="rating"?["KAUFEN","HALTEN","VERKAUFEN"].indexOf(a.recommendation)-["KAUFEN","HALTEN","VERKAUFEN"].indexOf(b.recommendation):
+      b.totalScore-a.totalScore),[results,filter,sort]);
+
+  const stats=useMemo(()=>({
+    total:results.length,kaufen:results.filter(r=>r.recommendation==="KAUFEN").length,
+    halten:results.filter(r=>r.recommendation==="HALTEN").length,
+    vk:results.filter(r=>r.recommendation==="VERKAUFEN").length,
+    avg:results.length>0?(results.reduce((s,r)=>s+(r.totalScore||0),0)/results.length).toFixed(1):"—",
+  }),[results]);
+
+  if(!results.length) return <div style={{background:C.card,border:"1px dashed "+C.border,borderRadius:14,padding:"50px 24px",textAlign:"center"}}>
+    <div style={{fontSize:40,marginBottom:14}}>📋</div>
+    <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>Noch keine Ergebnisse</div>
+    <div style={{color:C.subtext,fontSize:13}}>Starte zuerst eine Analyse im Scanner-Tab.</div>
+  </div>;
+
+  return <div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+      {[{l:"Analysiert",v:stats.total,c:C.accent,i:"🔍"},{l:"Ø Score",v:stats.avg,c:C.text,i:"📊"},
+        {l:"KAUFEN",v:stats.kaufen,c:C.green,i:"▲"},{l:"HALTEN",v:stats.halten,c:C.yellow,i:"●"},
+        {l:"VERKAUFEN",v:stats.vk,c:C.red,i:"▼"}].map(s=>(
+        <div key={s.l} style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"13px 10px",textAlign:"center"}}>
+          <div style={{fontSize:16,marginBottom:4}}>{s.i}</div>
+          <div style={{fontFamily:C.mono,fontSize:20,fontWeight:700,color:s.c,lineHeight:1}}>{s.v}</div>
+          <div style={{fontSize:9,color:C.subtext,marginTop:4,letterSpacing:0.5,textTransform:"uppercase"}}>{s.l}</div>
+        </div>
+      ))}
+    </div>
+    <div style={{display:"flex",gap:7,marginBottom:13,flexWrap:"wrap",alignItems:"center"}}>
+      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+        {["ALLE","KAUFEN","HALTEN","VERKAUFEN"].map(f=>{
+          const col=f==="KAUFEN"?C.green:f==="VERKAUFEN"?C.red:f==="HALTEN"?C.yellow:C.accent;
+          const bg=f==="KAUFEN"?C.greenGlow:f==="VERKAUFEN"?C.redGlow:f==="HALTEN"?C.yellowGlow:C.accentGlow;
+          return <button key={f} onClick={()=>setFilter(f)} style={{
+            padding:"5px 12px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:C.sans,transition:"all .15s",
+            border:"1px solid "+(filter===f?col+"66":C.border),
+            background:filter===f?bg:"transparent",color:filter===f?col:C.subtext}}>{f}</button>;
+        })}
+      </div>
+      <div style={{display:"flex",gap:5,marginLeft:"auto"}}>
+        {[{id:"score",l:"Score"},{id:"name",l:"Name"},{id:"rating",l:"Rating"}].map(s=>(
+          <button key={s.id} onClick={()=>setSort(s.id)} style={{
+            padding:"5px 11px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:C.sans,
+            border:"1px solid "+(sort===s.id?C.accent+"66":C.border),
+            background:sort===s.id?C.accentGlow:"transparent",
+            color:sort===s.id?C.accent:C.subtext}}>{"↕ "+s.l}</button>
+        ))}
+        <button onClick={()=>{
+          const hdr=["Rang","Name","WKN","Ticker","Region","Sektor","Score","Rating","Daten%","Kurs","Waehrung"];
+          const rows=sorted.map((s,i)=>[i+1,s.name,WKN[s.ticker]||"—",s.ticker,s.region,s.sector,
+            fmtS(s.totalScore),s.recommendation,(s.dataCompleteness||0)+"%",
+            s.currentPrice!=null?s.currentPrice.toFixed(2):"—",s.currency||"—"]);
+          exportCSV([hdr,...rows],"levermann_"+new Date().toISOString().slice(0,10)+".csv");
+        }} style={{padding:"5px 13px",borderRadius:8,border:"1px solid "+C.accent+"44",
+          background:C.accentGlow,color:C.accent,fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:C.sans}}>
+          ⬇ CSV
+        </button>
+      </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"38px 1fr 78px 76px 48px 68px 88px",
+      padding:"7px 15px",borderBottom:"1px solid "+C.border,fontSize:9,color:C.muted,
+      letterSpacing:1.5,textTransform:"uppercase",fontFamily:C.mono,
+      background:C.surface,borderRadius:"10px 10px 0 0",position:"sticky",top:0,zIndex:10}}>
+      <span>#</span><span>Name</span>
+      <span style={{textAlign:"center"}}>WKN</span>
+      <span style={{textAlign:"center"}}>Score</span>
+      <span style={{textAlign:"center"}}>Daten</span>
+      <span style={{textAlign:"center"}}>Kurs</span>
+      <span style={{textAlign:"center"}}>Rating</span>
+    </div>
+    {sorted.map((s,i)=><div key={s.ticker} style={{
+      display:"grid",gridTemplateColumns:"38px 1fr 78px 76px 48px 68px 88px",
+      padding:"10px 15px",borderBottom:"1px solid "+C.border,
+      background:i%2===0?"transparent":"#0b0d15",alignItems:"center"}}>
+      <span style={{fontFamily:C.mono,fontSize:11,fontWeight:700,color:i<3?C.accent:C.muted}}>{i+1}</span>
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:5}}>
+          <span style={{fontSize:12}}>{s.region}</span>
+          <span style={{fontWeight:600,fontSize:13,lineHeight:1.2}}>{s.name}</span>
+        </div>
+        <div style={{fontSize:10,color:C.subtext,fontFamily:C.mono,marginTop:1}}>{s.ticker} · {s.sector}</div>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <span style={{fontFamily:C.mono,fontSize:11,fontWeight:600,
+          color:WKN[s.ticker]?C.text:C.muted,background:WKN[s.ticker]?C.border:"transparent",
+          padding:"2px 5px",borderRadius:4}}>{WKN[s.ticker]||"—"}</span>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <span style={{fontFamily:C.mono,fontSize:16,fontWeight:700,color:scoreCol(s.totalScore),display:"block",lineHeight:1}}>{fmtS(s.totalScore)}</span>
+        <div style={{marginTop:3,padding:"0 6px"}}><ScoreBar score={s.totalScore}/></div>
+        <div style={{marginTop:3}}><Dots criteria={s.criteria}/></div>
+      </div>
+      <div style={{textAlign:"center"}}>
+        <span style={{fontSize:10,fontFamily:C.mono,fontWeight:600,
+          color:(s.dataCompleteness||0)>=70?C.green:(s.dataCompleteness||0)>=40?C.yellow:C.red}}>
+          {s.dataCompleteness||0}%</span>
+      </div>
+      <div style={{textAlign:"center"}}>
+        {s.currentPrice!=null?<div>
+          <span style={{fontFamily:C.mono,fontSize:12,fontWeight:600}}>{s.currentPrice.toFixed(2)}</span>
+          <div style={{fontSize:9,color:C.muted}}>{s.currency||""}</div>
+        </div>:<span style={{color:C.muted,fontSize:11}}>—</span>}
+      </div>
+      <div style={{textAlign:"center"}}><Badge rec={s.recommendation}/></div>
+    </div>)}
+    <div style={{padding:"11px 15px",fontSize:10,color:C.muted,textAlign:"center",borderTop:"1px solid "+C.border,lineHeight:1.6}}>
+      {sorted.length} Aktien · {new Date().toLocaleDateString("de-DE")} · Keine Anlageberatung · WKN ohne Gewaehr
+    </div>
+  </div>;
+}
+
+// ── Root App ────────────────────────────────────────────────────────
+function App(){
+  const [mode,       setMode]       = useState("static");
+  const [apiKey,     setApiKey]     = useState("");
+  const [count,      setCount]      = useState(50);
+  const [running,    setRunning]    = useState(false);
+  const [results,    setResults]    = useState([]);
+  const [errors,     setErrors]     = useState([]);
+  const [progress,   setProgress]   = useState(0);
+  const [curTicker,  setCurTicker]  = useState("");
+  const [done,       setDone]       = useState(false);
+  const [activeTab,  setActiveTab]  = useState("scanner");
+
+  const abortRef=useRef(false);
+  const resRef=useRef([]);
+  const errRef=useRef([]);
+
+  const maxN = Math.min(count, STATIC_STOCK_DATA.length);
+
+  function runStatic(){
+    const data = STATIC_STOCK_DATA.slice(0,maxN).map(s=>({...s,...calcScore(s,s.sector)}));
+    setResults(data); setErrors([]); setProgress(100); setDone(true);
+  }
+
+  async function runFinnhub(){
+    if(!apiKey.trim()) return;
+    abortRef.current=false; resRef.current=[]; errRef.current=[];
+    setRunning(true); setDone(false); setResults([]); setErrors([]); setProgress(0);
+    const batch=STATIC_STOCK_DATA.slice(0,maxN);
+    let done_=0;
+    for(let i=0; i<batch.length; i+=CONCURRENCY){
+      if(abortRef.current) break;
+      const chunk=batch.slice(i,i+CONCURRENCY);
+      setCurTicker(chunk.map(s=>s.ticker).join(", "));
+      const settled=await Promise.allSettled(chunk.map(async s=>{
+        const raw=await fetchWithRetry(s,apiKey);
+        return {...s,...raw,...calcScore(raw,s.sector)};
+      }));
+      settled.forEach((r,idx)=>{
+        if(r.status==="fulfilled"){resRef.current=[...resRef.current,r.value];setResults([...resRef.current]);}
+        else{errRef.current=[...errRef.current,{...chunk[idx],error:r.reason?.message||"Fehler"}];setErrors([...errRef.current]);}
       });
-      const stats = {
-        total: state.results.length,
-        kaufen: state.results.filter(r => r.recommendation === 'KAUFEN').length,
-        halten: state.results.filter(r => r.recommendation === 'HALTEN').length,
-        vk: state.results.filter(r => r.recommendation === 'VERKAUFEN').length,
-        avg: state.results.length ? (state.results.reduce((sum, r) => sum + (r.totalScore || 0), 0) / state.results.length).toFixed(1) : '—'
-      };
-      const summary = getSummary();
-      return `
-        ${renderHero('report')}
-        <section class="panel glass" style="margin-bottom:16px;">
-          <div class="section-head">
-            <div>
-              <div class="section-kicker">Executive Snapshot</div>
-              <div class="section-title">Entscheidungsreife Ergebnisübersicht</div>
-              <div class="section-desc">Kennzahlen, Quellenmix und Top-Kandidat direkt über dem Detail-Report zusammengeführt.</div>
-            </div>
-            <div class="section-pills">
-              <span class="section-pill">Champion: ${summary.best ? `${escapeHtml(summary.best.ticker)} ${fmtScore(summary.best.totalScore)}` : '—'}</span>
-              <span class="section-pill">Ø Score ${stats.avg}</span>
-            </div>
-          </div>
-          <div class="source-strip">
-            <div class="source-tile"><div class="source-label">Live-Datensätze</div><div class="source-value good">${summary.live}</div><div class="source-sub">Direkt von Finnhub geladen</div></div>
-            <div class="source-tile"><div class="source-label">Fallback-Datensätze</div><div class="source-value mid">${summary.fallback}</div><div class="source-sub">Bei Live-Fehlern transparent ersetzt</div></div>
-            <div class="source-tile"><div class="source-label">Statische Datensätze</div><div class="source-value" style="color:var(--accent)">${summary.statisch}</div><div class="source-sub">Direkte lokale Analysebasis</div></div>
-          </div>
-        </section>
-
-        <div class="stats-grid">
-          ${[
-            { label:'Analysiert', value:stats.total, color:'var(--accent)', icon:'🔍' },
-            { label:'Ø Score', value:stats.avg, color:'var(--text)', icon:'📊' },
-            { label:'KAUFEN', value:stats.kaufen, color:'var(--green)', icon:'▲' },
-            { label:'HALTEN', value:stats.halten, color:'var(--yellow)', icon:'●' },
-            { label:'VERKAUFEN', value:stats.vk, color:'var(--red)', icon:'▼' }
-          ].map(stat => `<section class="stat-card glass"><div class="stat-icon">${stat.icon}</div><div class="stat-value" style="color:${stat.color}">${escapeHtml(stat.value)}</div><div class="stat-label">${escapeHtml(stat.label)}</div></section>`).join('')}
-        </div>
-
-        <section class="panel glass">
-          <div class="toolbar">
-            <div class="chips">${['ALLE','KAUFEN','HALTEN','VERKAUFEN'].map(filter => {
-              const activeClass = state.reportFilter !== filter ? '' : (filter === 'KAUFEN' ? 'active-green' : filter === 'VERKAUFEN' ? 'active-red' : filter === 'HALTEN' ? 'active-yellow' : 'active-default');
-              return `<button class="chip ${activeClass}" data-action="report-filter" data-value="${escapeHtml(filter)}">${escapeHtml(filter)}</button>`;
-            }).join('')}</div>
-            <div class="toolbar-right">
-              ${[
-                { id:'score', label:'Score' },
-                { id:'name', label:'Name' },
-                { id:'rating', label:'Rating' }
-              ].map(sort => `<button class="chip ${state.reportSort === sort.id ? 'active-default' : ''}" data-action="report-sort" data-value="${escapeHtml(sort.id)}">↕ ${escapeHtml(sort.label)}</button>`).join('')}
-              <button class="btn-export" data-action="export-csv">⬇ CSV</button>
-            </div>
-          </div>
-          <div class="table-shell">
-            <div class="table-head report" style="grid-template-columns:38px 1fr 82px 78px 52px 72px 98px;">
-              <span>#</span><span>Name</span><span style="text-align:center">WKN</span><span style="text-align:center">Score</span><span style="text-align:center">Daten</span><span style="text-align:center">Kurs</span><span style="text-align:center">Rating</span>
-            </div>
-            ${sorted.map((stock, index) => `
-              <div class="table-row report ${index % 2 ? 'alt' : ''}" style="grid-template-columns:38px 1fr 82px 78px 52px 72px 98px;">
-                <span class="rank ${index < 3 ? 'top' : ''}">${index + 1}</span>
-                <div>
-                  <div class="name-main"><span style="font-size:12px">${escapeHtml(stock.region)}</span><span>${escapeHtml(stock.name)}</span>${renderSourceBadge(stock._source || 'static')}</div>
-                  <div class="name-sub">${escapeHtml(stock.ticker)} · ${escapeHtml(stock.sector)}</div>
-                </div>
-                <div style="text-align:center"><span class="wkn-pill ${WKN[stock.ticker] ? 'has' : 'none'}">${escapeHtml(WKN[stock.ticker] || '—')}</span></div>
-                <div style="text-align:center"><span class="score-value ${scoreClass(stock.totalScore)}">${fmtScore(stock.totalScore)}</span><div style="padding:0 6px">${renderScoreBar(stock.totalScore)}</div>${renderDots(stock.criteria)}</div>
-                <div style="text-align:center"><span class="mono ${dataClass(stock.dataCompleteness || 0)}" style="font-size:10px;font-weight:700">${stock.dataCompleteness || 0}%</span></div>
-                <div style="text-align:center">${ok(stock.currentPrice) ? `<div><span class="mono" style="font-size:12px;font-weight:700">${Number(stock.currentPrice).toFixed(2)}</span><div style="font-size:9px;color:var(--muted)">${escapeHtml(stock.currency || '')}</div></div>` : '<span style="color:var(--muted);font-size:11px">—</span>'}</div>
-                <div style="text-align:center">${renderBadge(stock.recommendation)}</div>
-              </div>
-            `).join('')}
-            <div class="footer-note">${sorted.length} Aktien · ${new Date().toLocaleDateString('de-DE')} · Keine Anlageberatung · WKN ohne Gewähr</div>
-          </div>
-        </section>
-      `;
+      done_+=chunk.length;
+      setProgress(Math.round(done_/batch.length*100));
+      // Pause between batches — prevents 429 rate limit on Finnhub free plan
+      if(i+CONCURRENCY < batch.length) await new Promise(r=>setTimeout(r, BATCH_DELAY_MS));
     }
+    setRunning(false); setDone(true); setCurTicker("");
+  }
 
-    function render(){
-      const root = $('app');
-      const active = document.activeElement;
-      const activeId = active && active.id ? active.id : null;
-      const selectionStart = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
-      const selectionEnd = active && typeof active.selectionEnd === 'number' ? active.selectionEnd : null;
-      root.innerHTML = `
-        <div class="app">
-          <header class="topbar glass">
-            <div class="shell topbar-inner">
-              <div class="eyebrow"><span class="eyebrow-dot"></span><span class="eyebrow-text">MSCI ACWI · Levermann iOS Edition</span></div>
-              <div class="headline">Top-30 <span class="accent">Screening</span></div>
-              <div class="subtitle">${STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · statisch + Finnhub Live · Apple-/iOS-inspirierte Oberfläche mit Quellen-Log und Score-Drilldown</div>
-              <div class="quick-badges">
-                <span class="quick-badge"> inspiriertes UI</span>
-                <span class="quick-badge">🪵 Quellen-Log</span>
-                <span class="quick-badge">📈 Score-Drilldown</span>
-              </div>
-            </div>
-          </header>
-          <nav class="tabbar">
-            <div class="shell tabs-wrap glass">
-              <div class="tabs">
-                ${[
-                  { id:'scanner', label:'⚡ Scanner' },
-                  { id:'report', label:`📋 Ergebnisse${state.results.length ? ` (${state.results.length})` : ''}` }
-                ].map(tab => `<button class="tab-btn ${state.activeTab === tab.id ? 'active' : ''}" data-action="set-tab" data-tab="${escapeHtml(tab.id)}">${tab.label}</button>`).join('')}
-              </div>
-            </div>
-          </nav>
-          <main class="shell main">${state.activeTab === 'scanner' ? renderScannerTab() : renderReportTab()}</main>
+  const TABS=[{id:"scanner",label:"⚡ Scanner"},{id:"report",label:"📋 Ergebnisse"+(results.length>0?" ("+results.length+")":"")}];
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:C.sans,
+      paddingTop:"env(safe-area-inset-top)",paddingBottom:"env(safe-area-inset-bottom)"}}>
+      {/* Header */}
+      <div style={{background:C.surface,borderBottom:"1px solid "+C.border,padding:"20px 20px 16px"}}>
+        <div style={{maxWidth:860,margin:"0 auto"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <div style={{width:7,height:7,borderRadius:"50%",background:C.accent,boxShadow:"0 0 8px "+C.accent}}/>
+            <span style={{fontSize:9,letterSpacing:3,color:C.accent,fontFamily:C.mono,textTransform:"uppercase"}}>MSCI ACWI · Levermann v5.0</span>
+          </div>
+          <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-0.5}}>Top-30 <span style={{color:C.accent}}>Screening</span></h1>
+          <p style={{color:C.subtext,fontSize:12,marginTop:4}}>
+            {STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · Statisch + Finnhub Live
+          </p>
         </div>
-      `;
-      const apiInput = $('apiKeyInput');
-      if(apiInput && apiInput.value !== state.apiKey) apiInput.value = state.apiKey;
-      const countInput = $('countInput');
-      if(countInput && Number(countInput.value) !== state.count) countInput.value = String(state.count);
-      if(activeId){
-        const next = $(activeId);
-        if(next){
-          next.focus({ preventScroll:true });
-          if(selectionStart !== null && selectionEnd !== null && typeof next.setSelectionRange === 'function'){
-            try { next.setSelectionRange(selectionStart, selectionEnd); } catch {}
-          }
-        }
-      }
-    }
+      </div>
+      {/* Tabs */}
+      <div style={{background:C.surface,borderBottom:"1px solid "+C.border}}>
+        <div style={{maxWidth:860,margin:"0 auto",display:"flex"}}>
+          {TABS.map(t=><button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+            padding:"12px 20px",background:"transparent",border:"none",
+            borderBottom:"2px solid "+(activeTab===t.id?C.accent:"transparent"),
+            color:activeTab===t.id?C.accent:C.subtext,
+            fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:C.sans,transition:"all .15s"}}>{t.label}</button>)}
+        </div>
+      </div>
 
-    document.addEventListener('click', (event) => {
-      const el = event.target.closest('[data-action]');
-      if(!el) return;
-      const action = el.getAttribute('data-action');
-      if(action === 'set-tab') return setState({ activeTab: el.getAttribute('data-tab') || 'scanner' });
-      if(action === 'set-mode') return setState({ mode: el.getAttribute('data-mode') || 'static' });
-      if(action === 'set-count') return setState({ count: Number(el.getAttribute('data-value') || state.count) });
-      if(action === 'set-region') return setState({ regionFilter: el.getAttribute('data-region') || 'Alle' });
-      if(action === 'toggle-expand'){
-        const ticker = el.getAttribute('data-ticker');
-        return setState({ expandedTicker: state.expandedTicker === ticker ? null : ticker });
-      }
-      if(action === 'run-analysis') return (state.mode === 'static' ? runStatic() : runFinnhub());
-      if(action === 'stop-analysis') return stopAnalysis();
-      if(action === 'report-filter') return setState({ reportFilter: el.getAttribute('data-value') || 'ALLE' });
-      if(action === 'report-sort') return setState({ reportSort: el.getAttribute('data-value') || 'score' });
-      if(action === 'export-csv'){
-        const filtered = state.results.filter(r => state.reportFilter === 'ALLE' || r.recommendation === state.reportFilter);
-        const sorted = filtered.slice().sort((a,b) => {
-          if(state.reportSort === 'name') return a.name.localeCompare(b.name, 'de');
-          if(state.reportSort === 'rating') return recommendationIndex(a.recommendation) - recommendationIndex(b.recommendation);
-          return b.totalScore - a.totalScore || a.name.localeCompare(b.name, 'de');
-        });
-        const header = ['Rang','Name','WKN','Ticker','Region','Sektor','Score','Rating','Daten%','Kurs','Währung','Quelle'];
-        const rows = sorted.map((s, i) => [i + 1, s.name, WKN[s.ticker] || '—', s.ticker, s.region, s.sector, fmtScore(s.totalScore), s.recommendation, `${s.dataCompleteness || 0}%`, ok(s.currentPrice) ? Number(s.currentPrice).toFixed(2) : '—', s.currency || '—', sourceLabel(s._source || 'static')]);
-        return exportCSV([header, ...rows], `levermann_ios_${new Date().toISOString().slice(0, 10)}.csv`);
-      }
-    });
+      <div style={{maxWidth:860,margin:"0 auto",padding:"20px"}}>
+        {activeTab==="scanner"&&<>
+          {/* Mode */}
+          <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"18px",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>Modus wählen</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[{id:"static",icon:"⚡",title:"Statisch",sub:"Sofort · Kein Key nötig · ~Anfang 2025"},
+                {id:"finnhub",icon:"📡",title:"Finnhub Live",sub:"Echtdaten · Als PWA deployen · Key nötig"}
+              ].map(m=><div key={m.id} onClick={()=>setMode(m.id)} style={{
+                padding:"14px",borderRadius:10,cursor:"pointer",transition:"all .15s",
+                border:"2px solid "+(mode===m.id?C.accent:C.border),
+                background:mode===m.id?C.accentGlow:"transparent"}}>
+                <div style={{fontSize:20,marginBottom:6}}>{m.icon}</div>
+                <div style={{fontWeight:700,fontSize:13,color:mode===m.id?C.accent:C.text}}>{m.title}</div>
+                <div style={{fontSize:11,color:C.subtext,marginTop:3,lineHeight:1.5}}>{m.sub}</div>
+              </div>)}
+            </div>
+          </div>
 
-    document.addEventListener('input', (event) => {
-      const target = event.target;
-      if(target && target.id === 'apiKeyInput') return setState({ apiKey: target.value });
-      if(target && target.id === 'countInput') return setState({ count: Number(target.value || state.count) });
-    });
+          {/* Finnhub Key */}
+          {mode==="finnhub"&&<div style={{background:C.card,border:"1px solid "+(!apiKey?C.accent+"55":C.green+"55"),borderRadius:14,padding:"18px",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>🔑 Finnhub API Key</div>
+            <input type="password" placeholder="Kostenloser Key von finnhub.io" value={apiKey}
+              onChange={e=>setApiKey(e.target.value)}/>
+            <div style={{fontSize:11,color:C.subtext,marginTop:8,lineHeight:1.6}}>
+              1. <a href="https://finnhub.io" style={{color:C.accent}}>finnhub.io</a> → Registrieren (kostenlos) → Dashboard → API Key kopieren<br/>
+              2. Key hier einfügen → Analyse starten<br/>
+              <span style={{color:C.yellow}}>⚠ Funktioniert nur in der deployed PWA, nicht im Claude Artifact-Preview.</span>
+            </div>
+          </div>}
 
-    window.addEventListener('beforeunload', () => FinnhubService.abortAll());
-    render();
-  </script>
+          {/* Slider + Button */}
+          <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"18px",marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12}}>
+              <div>
+                <span style={{fontSize:28,fontWeight:700,fontFamily:C.mono,color:C.accent}}>{maxN}</span>
+                <span style={{fontSize:13,color:C.subtext,marginLeft:6}}>Aktien</span>
+                {mode==="static"&&<span style={{fontSize:11,color:C.green,marginLeft:10}}>⚡ Sofort</span>}
+              </div>
+              {mode==="finnhub"&&<span style={{fontSize:11,color:C.subtext}}>~{Math.ceil(maxN/50)*4}-{Math.ceil(maxN/50)*7} Min.</span>}
+            </div>
+            <input type="range" min={10} max={STATIC_STOCK_DATA.length} step={10} value={count}
+              onChange={e=>setCount(+e.target.value)} disabled={running} style={{width:"100%"}}/>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
+              {[10,25,50,75,100].map(v=><span key={v} onClick={()=>!running&&setCount(v)} style={{
+                fontSize:9,fontFamily:C.mono,cursor:"pointer",
+                color:v===count?C.accent:C.muted,fontWeight:v===count?700:400}}>{v}</span>)}
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:14}}>
+              <button onClick={mode==="static"?runStatic:runFinnhub}
+                disabled={running||(mode==="finnhub"&&!apiKey)}
+                style={{flex:1,padding:"13px",borderRadius:10,border:"none",
+                  background:(running||(mode==="finnhub"&&!apiKey))?C.border:"linear-gradient(135deg,"+C.accent+",#2855c8)",
+                  color:(running||(mode==="finnhub"&&!apiKey))?C.muted:"#fff",
+                  fontWeight:700,fontSize:14,cursor:(running||(mode==="finnhub"&&!apiKey))?"not-allowed":"pointer",
+                  fontFamily:C.sans,transition:"all .2s"}}>
+                {running?("Analysiere... ("+progress+"%)"):done?"Erneut analysieren":(maxN+" Aktien analysieren")}
+              </button>
+              {running&&<button onClick={()=>{abortRef.current=true;setRunning(false);setDone(true);}} style={{
+                padding:"13px 18px",borderRadius:10,border:"1px solid "+C.red+"44",
+                background:C.redGlow,color:C.red,fontWeight:600,fontSize:13,
+                cursor:"pointer",fontFamily:C.sans}}>Stop</button>}
+            </div>
+          </div>
+
+          {/* Progress */}
+          {running&&<div style={{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"16px 18px",marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
+              <span style={{fontSize:12,color:C.subtext,animation:"pulse 1.5s infinite"}}>{"Analysiere: "+curTicker}</span>
+              <span style={{fontFamily:C.mono,fontSize:12,color:C.accent}}>{progress}%</span>
+            </div>
+            <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
+              <div style={{height:"100%",width:progress+"%",background:"linear-gradient(90deg,"+C.accent+","+C.green+")",borderRadius:3,transition:"width .3s"}}/>
+            </div>
+            {errors.length>0&&<details style={{marginTop:8}}>
+              <summary style={{fontSize:11,color:C.red,cursor:"pointer"}}>{errors.length} Fehler</summary>
+              <div style={{fontSize:10,color:C.subtext,marginTop:4,fontFamily:C.mono,lineHeight:1.8}}>
+                {errors.map(e=>e.ticker+": "+((e.error && (String(e.error).includes("<!DOCTYPE html") || String(e.error).includes("<html"))) ? "HTML-Antwort statt JSON von Finnhub" : e.error)).join(" | ")}
+              </div>
+            </details>}
+          </div>}
+
+          <ResultsTable results={results} isFinnhub={mode==="finnhub"}/>
+
+          {!running&&!done&&<div style={{background:C.card,border:"1px dashed "+C.border,borderRadius:14,padding:"50px 24px",textAlign:"center"}}>
+            <div style={{fontSize:42,marginBottom:14}}>🌍</div>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>MSCI ACWI Levermann-Screening</div>
+            <div style={{color:C.subtext,fontSize:13,lineHeight:1.8}}>
+              Modus wählen → Anzahl einstellen → Analyse starten<br/>
+              <span style={{fontSize:11,color:C.muted}}>{STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring</span>
+            </div>
+          </div>}
+        </>}
+
+        {activeTab==="report"&&<ReportTab results={results}/>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
 </body>
 </html>
