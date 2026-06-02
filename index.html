@@ -140,7 +140,7 @@
     .tick-btn{font-family:var(--mono);font-size:10px;color:var(--muted)}
     .tick-btn.active{color:var(--accent);font-weight:700}
     .btn-row{display:flex;gap:10px;margin-top:16px}
-    .btn-primary,.btn-secondary,.btn-export{transition:all .15s ease}
+    .btn-primary,.btn-secondary,.btn-export,.btn-diagnose{transition:all .15s ease}
     .btn-primary{flex:1;padding:14px 16px;border-radius:18px;font-size:14px;font-weight:800;background:linear-gradient(180deg, #1394ff 0%, #007aff 100%);color:#fff;box-shadow:0 16px 28px rgba(10,132,255,.22), inset 0 1px 0 rgba(255,255,255,.35)}
     .btn-primary:disabled{background:linear-gradient(180deg, #b7c3d4 0%, #aab6c8 100%);color:#eff2f7;cursor:not-allowed;box-shadow:none}
     .btn-secondary{padding:14px 18px;border-radius:18px;font-size:13px;font-weight:800;background:rgba(255,69,58,.12);color:var(--red);border:1px solid rgba(255,69,58,.16)}
@@ -416,7 +416,7 @@
   "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6",
 };
 
-    const APP_VERSION = '6.2.3';
+    const APP_VERSION = '6.2.6';
     const APP_RELEASE_DATE = '2026-06-02';
     const ARCH_PROFILE = 'Single-File Client PWA · conservative Finnhub runtime';
     const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
@@ -425,8 +425,12 @@
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 3500;
     const REQUEST_GAP_MS = 550;         // Pause zwischen den vier Endpunkten je Aktie
-    const SELF_TEST_SYMBOL = 'AAPL';
-    const PREFLIGHT_TIMEOUT_MS = 12000;
+    const FINNHUB_ENDPOINTS = [
+      'stock/metric?symbol=<TICKER>&metric=all',
+      'stock/recommendation?symbol=<TICKER>',
+      'quote?symbol=<TICKER>',
+      'stock/price-target?symbol=<TICKER>'
+    ];
     const HTML_RETRY_DELAYS_MS = [8000, 15000, 30000];
     const RATE_LIMIT_RETRY_DELAYS_MS = [20000, 45000, 90000];
     const NETWORK_RETRY_DELAYS_MS = [4000, 9000, 18000];
@@ -722,15 +726,38 @@
         return 'USD';
       }
 
+      async function debugEndpoint(path, key) {
+        const controller = addController(new AbortController());
+        try {
+          try {
+            const data = await request(path, key, controller.signal);
+            let detail = 'JSON erfolgreich geladen';
+            if (Array.isArray(data)) detail = `JSON Array (${data.length}) erfolgreich geladen`;
+            else if (data && typeof data === 'object') detail = `JSON Objekt erfolgreich geladen (${Object.keys(data).slice(0,5).join(', ') || 'leer'})`;
+            return { ok:true, path, url: buildUrl(path, key), httpStatus:200, detail };
+          } catch (err) {
+            return {
+              ok:false,
+              path,
+              url: err && err._url ? err._url : buildUrl(path, key),
+              httpStatus: err && Number.isFinite(err._status) ? err._status : null,
+              detail: normalizeErrorText(err && (err.message || err) || 'Fehler')
+            };
+          }
+        } finally {
+          removeController(controller);
+        }
+      }
+
       async function fetchStock(stock, key, signal) {
         const t = stock.ticker;
         const metrics = await request(`stock/metric?symbol=${t}&metric=all`, key, signal);
         await sleep(REQUEST_GAP_MS);
-        const recs = await request(`recommendation?symbol=${t}`, key, signal);
+        const recs = await request(`stock/recommendation?symbol=${t}`, key, signal);
         await sleep(REQUEST_GAP_MS);
         const quote = await request(`quote?symbol=${t}`, key, signal);
         await sleep(REQUEST_GAP_MS);
-        const target = await request(`price-target?symbol=${t}`, key, signal);
+        const target = await request(`stock/price-target?symbol=${t}`, key, signal);
 
         const m = (metrics && metrics.metric) || {};
         const nz = (v) => v !== null && v !== undefined && Number.isFinite(v) && v !== 0;
@@ -811,10 +838,7 @@
             return Object.assign({}, fallback, {
               _source:'fallback',
               _fallbackError:fallbackReason,
-              _fallbackType: classifyRuntimeError(fallbackReason).code,
-              _fallbackEndpoint: lastErr && lastErr._path ? lastErr._path : '',
-              _fallbackStatus: lastErr && Number.isFinite(lastErr._status) ? lastErr._status : null,
-              _fallbackDetail: lastErr && lastErr._url ? lastErr._url : ''
+              _fallbackType: classifyRuntimeError(fallbackReason).code
             });
           }
           throw lastErr || new Error('Unbekannter Finnhub-Fehler');
@@ -827,7 +851,7 @@
         controllers.forEach(ctrl => { try { ctrl.abort(); } catch {} });
         controllers.clear();
       }
-      return { fetchWithRetry, abortAll, preflightCheck };
+      return { fetchWithRetry, abortAll, preflightCheck, debugEndpoint };
     })();
 
     const state = {
@@ -848,8 +872,7 @@
       reportFilter:'ALLE',
       stopRequested:false,
       analysisToken:0,
-      lastRunMode:'static',
-      preflight:null
+      lastRunMode:'static'
     };
 
     let renderQueued = false;
@@ -869,9 +892,6 @@
         message: source === 'live' ? 'Daten erfolgreich aus Finnhub geladen.' : source === 'fallback' ? 'Finnhub fehlgeschlagen, statische Fallback-Daten verwendet.' : 'Statischer Modus – lokale Datenbasis verwendet.',
         error: errorText,
         score: extra.score ?? null,
-        endpoint: extra.endpoint || '',
-        httpStatus: extra.httpStatus ?? null,
-        detail: extra.detail || '',
         reasonCode: extra.reasonCode || classification.code,
         reasonLabel: extra.reasonLabel || classification.label
       };
@@ -888,27 +908,7 @@
       const key = state.apiKey.trim();
       if(!key || state.running) return;
       const token = Date.now();
-      setState({ running:true, done:false, results:[], errors:[], logs:[], progress:0, curTicker:'', stopRequested:false, analysisToken:token, lastRunMode:'finnhub', preflight:null });
-      const preflight = await FinnhubService.preflightCheck(key);
-      setState({ preflight, progress: preflight.ok ? 3 : 0 });
-      appendLog({
-        ts: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
-        ticker: preflight.symbol || SELF_TEST_SYMBOL,
-        name:'API-Selbsttest',
-        source: preflight.ok ? 'live' : 'fallback',
-        message: preflight.ok ? 'API-Selbsttest erfolgreich.' : 'API-Selbsttest fehlgeschlagen. Vollscan wird nicht gestartet.',
-        error: preflight.ok ? '' : preflight.detail,
-        score:null,
-        endpoint: preflight.endpoint || '',
-        httpStatus: preflight.httpStatus ?? null,
-        detail: preflight.detail || '',
-        reasonCode: classifyRuntimeError(preflight.detail || '').code,
-        reasonLabel: classifyRuntimeError(preflight.detail || '').label
-      });
-      if(!preflight.ok){
-        setState({ running:false, done:true, curTicker:'', errors:[{ ticker: preflight.symbol || SELF_TEST_SYMBOL, error: preflight.detail || 'Preflight fehlgeschlagen' }], progress:0 });
-        return;
-      }
+      setState({ running:true, done:false, results:[], errors:[], logs:[], progress:0, curTicker:'', stopRequested:false, analysisToken:token, lastRunMode:'finnhub' });
       const batch = STATIC_STOCK_DATA.slice(0, Math.min(state.count, STATIC_STOCK_DATA.length));
       const results = [];
       const errors = [];
@@ -927,10 +927,10 @@
           const stock = chunk[idx];
           if(entry.status === 'fulfilled'){
             batchResults.push(entry.value);
-            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore, endpoint: entry.value._fallbackEndpoint || 'stock/metric + stock/recommendation + quote + stock/price-target', httpStatus: entry.value._source === 'fallback' ? (entry.value._fallbackStatus ?? null) : 200, detail: entry.value._fallbackDetail || '', reasonCode: entry.value._fallbackType || classifyRuntimeError(entry.value._fallbackError || '').code }));
+            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore, reasonCode: entry.value._fallbackType || classifyRuntimeError(entry.value._fallbackError || '').code }));
           } else if (!(entry.reason && entry.reason.name === 'AbortError')) {
             batchErrors.push(Object.assign({}, stock, { error: entry.reason?.message || 'Fehler' }));
-            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null, endpoint: entry.reason?._path || '', httpStatus: Number.isFinite(entry.reason?._status) ? entry.reason._status : null, detail: entry.reason?._url || '', reasonCode: classifyRuntimeError(entry.reason?.message || 'Fehler').code }));
+            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null, reasonCode: classifyRuntimeError(entry.reason?.message || 'Fehler').code }));
           }
         });
         completed += chunk.length;
@@ -943,11 +943,75 @@
       setState({ running:false, done:true, curTicker:'', progress:state.stopRequested ? state.progress : 100 });
     }
 
+    async function runDiagnosis(){
+      const key = state.apiKey.trim();
+      if(!key || state.running || state.diagnosing) return;
+      setState({ diagnosing:true, logs:[], errors:[], done:false, progress:0, curTicker:'Diagnose läuft…', preflight:null });
+      const endpoints = [
+        { key:'metric', label:'stock/metric', path:'stock/metric?symbol=AAPL&metric=all' },
+        { key:'recommendation', label:'stock/recommendation', path:'stock/recommendation?symbol=AAPL' },
+        { key:'quote', label:'quote', path:'quote?symbol=AAPL' },
+        { key:'priceTarget', label:'stock/price-target', path:'stock/price-target?symbol=AAPL' }
+      ];
+      const logs = [];
+      const errors = [];
+      for(let i=0; i<endpoints.length; i++){
+        const ep = endpoints[i];
+        try {
+          const result = await FinnhubService.debugEndpoint(ep.path, key);
+          logs.unshift({
+            ts:new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+            ticker:'AAPL',
+            name:`Diagnose · ${ep.label}`,
+            source: result.ok ? 'live' : 'fallback',
+            message: result.ok ? 'Endpoint erfolgreich geprüft.' : 'Endpoint-Prüfung fehlgeschlagen.',
+            error: result.ok ? '' : (result.detail || 'Fehler'),
+            score:null,
+            endpoint: ep.path,
+            httpStatus: result.httpStatus ?? null,
+            detail: result.url || result.detail || '',
+            reasonCode: classifyRuntimeError(result.detail || '').code,
+            reasonLabel: classifyRuntimeError(result.detail || '').label
+          });
+          if(!result.ok) errors.push({ ticker:ep.label, error: result.detail || 'Fehler' });
+        } catch (err) {
+          logs.unshift({
+            ts:new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+            ticker:'AAPL',
+            name:`Diagnose · ${ep.label}`,
+            source:'fallback',
+            message:'Endpoint-Prüfung fehlgeschlagen.',
+            error: normalizeErrorText(err && (err.message || err) || 'Fehler'),
+            score:null,
+            endpoint: ep.path,
+            httpStatus: err && Number.isFinite(err._status) ? err._status : null,
+            detail: err && err._url ? err._url : '',
+            reasonCode: classifyRuntimeError(err && (err.message || err) || 'Fehler').code,
+            reasonLabel: classifyRuntimeError(err && (err.message || err) || 'Fehler').label
+          });
+          errors.push({ ticker:ep.label, error: normalizeErrorText(err && (err.message || err) || 'Fehler') });
+        }
+        setState({ logs: logs.slice(), errors: errors.slice(), progress: Math.round(((i+1)/endpoints.length)*100) });
+      }
+      const okCount = logs.filter(l => l.source === 'live').length;
+      const failCount = logs.length - okCount;
+      const recommendationLog = logs.find(l => l.endpoint === 'stock/recommendation?symbol=AAPL');
+      const preflight = {
+        ok: failCount === 0,
+        symbol:'AAPL',
+        endpoint:'Diagnose aller Finnhub-Endpunkte',
+        httpStatus: failCount === 0 ? 200 : (recommendationLog ? recommendationLog.httpStatus : null),
+        detail: `Diagnose abgeschlossen: ${okCount} erfolgreich, ${failCount} fehlgeschlagen.${recommendationLog ? ` Recommendation: HTTP ${recommendationLog.httpStatus ?? 'n/v'}.` : ''}`,
+        ts: new Date().toISOString()
+      };
+      setState({ diagnosing:false, done:true, curTicker:'', preflight, progress:100 });
+    }
+
     function stopAnalysis(){
       state.stopRequested = true;
       FinnhubService.abortAll();
       appendLog({ ts:new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }), ticker:'—', name:'Analyse gestoppt', source:'static', message:'Lauf durch Benutzer beendet.', error:'', score:null });
-      setState({ running:false, done:true, curTicker:'' });
+      setState({ running:false, diagnosing:false, done:true, curTicker:'' });
     }
 
     function getSummary(){
@@ -1059,8 +1123,6 @@
             <span class="log-src ${sourceClass(entry.source)}">${escapeHtml(sourceLabel(entry.source))}</span>
           </div>
           <div class="log-error" style="color:var(--subtext)">${escapeHtml(entry.message)}</div>
-          ${entry.endpoint ? `<div class="log-error" style="color:var(--subtext)">Endpoint: ${escapeHtml(entry.endpoint)}${entry.httpStatus !== null && entry.httpStatus !== undefined ? ` · HTTP ${escapeHtml(entry.httpStatus)}` : ''}</div>` : ''}
-          ${entry.detail ? `<div class="log-error" style="color:var(--subtext)">Detail: ${escapeHtml(entry.detail)}</div>` : ''}
           ${entry.error ? `<div class="log-error">Grund: ${escapeHtml(entry.error)}</div>` : ''}
         </div>
       `).join('') : `<div class="placeholder-text">Noch kein Log vorhanden. Starte eine Analyse, damit Live- und Fallback-Quellen pro Aktie protokolliert werden.</div>`;
@@ -1070,7 +1132,7 @@
             <div>
               <div class="section-kicker">Source & Fallback Diagnostics</div>
               <div class="section-title">Quellen-Log</div>
-              <div class="section-desc">Zeigt je Aktie, ob der Datensatz aus Finnhub oder dem statischen Fallback stammt. Im statischen Modus werden lokale Datensätze entsprechend markiert.</div>
+              <div class="section-desc">Zeigt je Aktie, ob der Datensatz aus Finnhub oder dem statischen Fallback stammt. Im statischen Modus werden lokale Datensätze entsprechend markiert. Mit dem Diagnose-Button wird zusätzlich jeder Finnhub-Endpoint einzeln gegen AAPL getestet.</div>
             </div>
             <div class="section-pills">
               <span class="section-pill">LIVE ${summary.live}</span>
@@ -1190,16 +1252,16 @@
             <section class="card glass">
               <div class="section-head">
                 <div>
-                  <div class="section-kicker">Connectivity Check</div>
-                  <div class="section-title">API-Selbsttest vor Vollscan</div>
-                  <div class="section-desc">Vor jedem Live-Scan testet Version 6.2.3 zuerst den Endpoint <span class="mono">quote?symbol=${SELF_TEST_SYMBOL}</span>. Bei Fehlern wird der Vollscan bewusst nicht gestartet und das Log zeigt Endpoint, HTTP-Status und Detail an.</div>
+                  <div class="section-kicker">Runtime Endpoints</div>
+                  <div class="section-title">Finnhub Endpoint-Übersicht</div>
+                  <div class="section-desc">Version 6.2.5 zeigt transparent, welche vier Finnhub-Endpoints im Live-Modus wirklich verwendet werden. So siehst du sofort, dass <span class="mono">stock/recommendation</span> und <span class="mono">stock/price-target</span> mit dem korrekten <span class="mono">/stock/</span>-Prefix aufgerufen werden.</div>
                 </div>
                 <div class="section-pills">
-                  <span class="section-pill">Self-Test ${escapeHtml(SELF_TEST_SYMBOL)}</span>
-                  <span class="section-pill">Endpoint-Logging aktiv</span>
+                  <span class="section-pill">Basis: api.finnhub.io</span>
+                  <span class="section-pill">4 Endpoints</span>
                 </div>
               </div>
-              ${state.preflight ? `<div class="note" style="margin-top:0">${state.preflight.ok ? '✅ API-Selbsttest erfolgreich' : '⚠️ API-Selbsttest fehlgeschlagen'} · Endpoint: ${escapeHtml(state.preflight.endpoint || '')}${state.preflight.httpStatus !== null && state.preflight.httpStatus !== undefined ? ` · HTTP ${escapeHtml(state.preflight.httpStatus)}` : ''}<br />${escapeHtml(state.preflight.detail || '')}</div>` : ''}
+              <div class="chips">${FINNHUB_ENDPOINTS.map(endpoint => `<span class="chip active-default mono">${escapeHtml(endpoint)}</span>`).join('')}</div>
             </section>
           ` : ''}
           <section class="card glass">
@@ -1222,22 +1284,23 @@
             <input id="countInput" type="range" min="10" max="${STATIC_STOCK_DATA.length}" step="5" value="${maxN}" ${state.running ? 'disabled' : ''} />
             <div class="ticks">${TICK_VALUES.map(v => `<button class="tick-btn ${state.count === v ? 'active' : ''}" data-action="set-count" data-value="${v}">${v}</button>`).join('')}</div>
             <div class="btn-row">
-              <button class="btn-primary" data-action="run-analysis" ${(state.running || (state.mode === 'finnhub' && !state.apiKey.trim())) ? 'disabled' : ''}>${state.running ? `Analysiere... (${state.progress}%)` : state.done ? 'Erneut analysieren' : `${maxN} Aktien analysieren`}</button>
+              <button class="btn-primary" data-action="run-analysis" ${(state.running || state.diagnosing || (state.mode === 'finnhub' && !state.apiKey.trim())) ? 'disabled' : ''}>${state.running ? `Analysiere... (${state.progress}%)` : state.done ? 'Erneut analysieren' : `${maxN} Aktien analysieren`}</button>
+              ${state.mode === 'finnhub' ? `<button class="btn-diagnose" data-action="run-diagnosis" ${(state.running || state.diagnosing || !state.apiKey.trim()) ? 'disabled' : ''}>${state.diagnosing ? `Diagnose... (${state.progress}%)` : 'Diagnose'}</button>` : ''}
               ${state.running ? '<button class="btn-secondary" data-action="stop-analysis">Stop</button>' : ''}
             </div>
             <div class="note">Neu: iOS-inspirierte Optik mit konservativem Live-Profil für deine Single-File-/PWA-Architektur: CONCURRENCY=1, längere Batch-Pausen, globale Provider-Abkühlzeit und spezieller HTML-/Rate-Limit-Backoff vor dem finalen Fallback.</div>
           </section>
 
-          ${state.running ? `
+          ${(state.running || state.diagnosing) ? `
             <section class="card glass">
               <div class="section-head">
                 <div>
                   <div class="section-kicker">Live Progress</div>
-                  <div class="section-title">Analyse läuft</div>
+                  <div class="section-title">${state.diagnosing ? 'Diagnose läuft' : 'Analyse läuft'}</div>
                 </div>
                 <div class="section-pill">${state.progress}%</div>
               </div>
-              <div class="progress-top"><span class="progress-title">Analysiere: ${escapeHtml(state.curTicker || '…')}</span><span class="progress-pct">${state.progress}%</span></div>
+              <div class="progress-top"><span class="progress-title">${state.diagnosing ? 'Prüfe Endpoints' : 'Analysiere'}: ${escapeHtml(state.curTicker || '…')}</span><span class="progress-pct">${state.progress}%</span></div>
               <div class="progress-bar"><div class="progress-fill" style="width:${state.progress}%"></div></div>
               ${state.errors.length ? `<details><summary>${state.errors.length} Fehler</summary><div class="error-list">${state.errors.map(e => `${escapeHtml(e.ticker)}: ${escapeHtml(normalizeErrorText(e.error))}`).join(' | ')}</div></details>` : ''}
             </section>
@@ -1410,6 +1473,7 @@
         return setState({ expandedTicker: state.expandedTicker === ticker ? null : ticker });
       }
       if(action === 'run-analysis') return (state.mode === 'static' ? runStatic() : runFinnhub());
+      if(action === 'run-diagnosis') return runDiagnosis();
       if(action === 'stop-analysis') return stopAnalysis();
       if(action === 'report-filter') return setState({ reportFilter: el.getAttribute('data-value') || 'ALLE' });
       if(action === 'report-sort') return setState({ reportSort: el.getAttribute('data-value') || 'score' });
