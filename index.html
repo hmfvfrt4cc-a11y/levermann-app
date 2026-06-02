@@ -413,9 +413,10 @@
   "ZURN.SW":"A0Q4WY","MC.PA":"853292","OR.PA":"853888","AIR.PA":"938914",
   "BHP":"908101","TSM":"909800","BABA":"A117TB","TCEHY":"A1138D",
   "INFY":"A0NECU","HDB":"A0F6TN","VALE":"897998","PBR":"896475",
-  "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6","PANW":"A1JZ0Q","SNPS":"883703","WDAY":"A1J39P","SPGI":"A2AHZ7","WFC":"857949","DE":"850866","NKE":"866993","REGN":"881535","HSBA.L":"923893","MUFG":"657892"};
+  "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6",
+};
 
-    const APP_VERSION = '6.2.1';
+    const APP_VERSION = '6.2.3';
     const APP_RELEASE_DATE = '2026-06-02';
     const ARCH_PROFILE = 'Single-File Client PWA · conservative Finnhub runtime';
     const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
@@ -424,6 +425,8 @@
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 3500;
     const REQUEST_GAP_MS = 550;         // Pause zwischen den vier Endpunkten je Aktie
+    const SELF_TEST_SYMBOL = 'AAPL';
+    const PREFLIGHT_TIMEOUT_MS = 12000;
     const HTML_RETRY_DELAYS_MS = [8000, 15000, 30000];
     const RATE_LIMIT_RETRY_DELAYS_MS = [20000, 45000, 90000];
     const NETWORK_RETRY_DELAYS_MS = [4000, 9000, 18000];
@@ -590,7 +593,7 @@
       else add(13,'Kurspotenzial',-1,fmtPct(analystTargetUpside),'Negativ');
 
       const totalScore = criteria.filter(c => c.active).reduce((sum, c) => sum + c.score, 0);
-      const recommendation = totalScore >= 4 ? 'KAUFEN' : totalScore <= 1 ? 'VERKAUFEN' : 'HALTEN';
+      const recommendation = totalScore >= 4 ? 'KAUFEN' : totalScore <= 2 ? 'VERKAUFEN' : 'HALTEN';
       const applicable = criteria.filter(c => c.active && c.applicable).length;
       const available = criteria.filter(c => c.active && c.applicable && c.value !== 'n/v').length;
       const dataCompleteness = applicable ? Math.round((available / applicable) * 100) : 0;
@@ -601,7 +604,7 @@
       const controllers = new Set();
       const addController = (ctrl) => { controllers.add(ctrl); return ctrl; };
       const removeController = (ctrl) => controllers.delete(ctrl);
-      const buildUrl = (path, key) => `https://finnhub.io/api/v1/${path}&token=${encodeURIComponent(key)}`;
+      const buildUrl = (path, key) => `https://api.finnhub.io/api/v1/${path}&token=${encodeURIComponent(key)}`;
 
       let providerCooldownUntil = 0;
       async function waitForProviderCooldown() {
@@ -624,15 +627,34 @@
           resp = await fetch(url, { method:'GET', mode:'cors', credentials:'omit', headers:{ 'Accept':'application/json' }, signal });
         } catch (err) {
           if (err && err.name === 'AbortError') throw err;
-          throw new Error(`Netzwerk: ${err.message} — CORS oder Verbindung. Key korrekt?`);
+          const e = new Error(`Netzwerk: ${err.message} — CORS oder Verbindung. Key korrekt?`);
+          e._path = path;
+          e._url = url;
+          e._status = 0;
+          throw e;
         }
 
-        if (resp.status === 401 || resp.status === 403) throw new Error(`API Key ungültig (${resp.status}) — Key auf finnhub.io prüfen`);
+        if (resp.status === 401) {
+          const e = new Error('API Key ungültig (401) — Key auf finnhub.io prüfen');
+          e._path = path; e._url = url; e._status = 401;
+          throw e;
+        }
+        if (resp.status === 403) {
+          const e = new Error('403 Forbidden — Zugriff auf Ressource verweigert. Mögliche Ursachen: Browser/WAF-Block, Plan-/Endpoint-Beschränkung oder noch nicht aktivierter Key.');
+          e._path = path; e._url = url; e._status = 403;
+          throw e;
+        }
         if (resp.status === 429) {
           setProviderCooldown(PROVIDER_COOLDOWN_RATE_MS);
-          throw new Error('Rate Limit (429) — Finnhub verlangt Abkühlzeit. Statischer Fallback wird nach zusätzlichem Backoff verwendet, wenn keine Live-Antwort mehr kommt.');
+          const e = new Error('Rate Limit (429) — Finnhub verlangt Abkühlzeit. Statischer Fallback wird nach zusätzlichem Backoff verwendet, wenn keine Live-Antwort mehr kommt.');
+          e._path = path; e._url = url; e._status = 429;
+          throw e;
         }
-        if (!resp.ok) throw new Error(`Finnhub HTTP ${resp.status}`);
+        if (!resp.ok) {
+          const e = new Error(`Finnhub HTTP ${resp.status}`);
+          e._path = path; e._url = url; e._status = resp.status;
+          throw e;
+        }
 
         const raw = await resp.text();
         if (!raw || raw.trim() === '') { CacheService.set(url, {}); return {}; }
@@ -642,14 +664,51 @@
 
         if (trimmed.startsWith('<!DOCTYPE html') || trimmed.startsWith('<html') || contentType.includes('text/html')) {
           setProviderCooldown(PROVIDER_COOLDOWN_HTML_MS);
-          throw new Error('Finnhub lieferte HTML statt JSON (Provider-/Rate-Limit-/WAF-Antwort). Statischer Fallback wird verwendet.');
+          const e = new Error('Finnhub lieferte HTML statt JSON (Provider-/Rate-Limit-/WAF-Antwort). Statischer Fallback wird verwendet.');
+          e._path = path; e._url = url; e._status = resp.status || 200;
+          throw e;
         }
 
         let data;
-        try { data = JSON.parse(trimmed); } catch { throw new Error(`Finnhub lieferte kein gültiges JSON (${trimmed.slice(0,40)})`); }
+        try {
+          data = JSON.parse(trimmed);
+        } catch {
+          const e = new Error(`Finnhub lieferte kein gültiges JSON (${trimmed.slice(0,40)})`);
+          e._path = path; e._url = url; e._status = resp.status || 200;
+          throw e;
+        }
         if (data && data.error) { CacheService.set(url, {}); return {}; }
         CacheService.set(url, data);
         return data;
+      }
+
+      async function preflightCheck(key) {
+        const controller = addController(new AbortController());
+        const timeout = setTimeout(() => { try { controller.abort(); } catch {} }, PREFLIGHT_TIMEOUT_MS);
+        try {
+          const quote = await request(`quote?symbol=${SELF_TEST_SYMBOL}`, key, controller.signal);
+          const okQuote = quote && Number.isFinite(quote.c);
+          return {
+            ok: !!okQuote,
+            symbol: SELF_TEST_SYMBOL,
+            endpoint: `quote?symbol=${SELF_TEST_SYMBOL}`,
+            httpStatus: 200,
+            detail: okQuote ? `Quote erfolgreich geladen (${SELF_TEST_SYMBOL}: ${Number(quote.c).toFixed(2)})` : 'Request war erfolgreich, aber Quote ist leer.',
+            ts: new Date().toISOString()
+          };
+        } catch (err) {
+          return {
+            ok: false,
+            symbol: SELF_TEST_SYMBOL,
+            endpoint: err && err._path ? err._path : `quote?symbol=${SELF_TEST_SYMBOL}`,
+            httpStatus: err && Number.isFinite(err._status) ? err._status : null,
+            detail: normalizeErrorText(err && (err.message || err) || 'Unbekannter Fehler'),
+            ts: new Date().toISOString()
+          };
+        } finally {
+          clearTimeout(timeout);
+          removeController(controller);
+        }
       }
 
       function inferCurrency(ticker) {
@@ -667,11 +726,11 @@
         const t = stock.ticker;
         const metrics = await request(`stock/metric?symbol=${t}&metric=all`, key, signal);
         await sleep(REQUEST_GAP_MS);
-        const recs = await request(`stock/recommendation?symbol=${t}`, key, signal);
+        const recs = await request(`recommendation?symbol=${t}`, key, signal);
         await sleep(REQUEST_GAP_MS);
         const quote = await request(`quote?symbol=${t}`, key, signal);
         await sleep(REQUEST_GAP_MS);
-        const target = await request(`stock/price-target?symbol=${t}`, key, signal);
+        const target = await request(`price-target?symbol=${t}`, key, signal);
 
         const m = (metrics && metrics.metric) || {};
         const nz = (v) => v !== null && v !== undefined && Number.isFinite(v) && v !== 0;
@@ -679,11 +738,11 @@
         if (roe !== null && (roe > 5 || roe < -2)) roe = null;
         let ebitMargin = null;
         if (nz(m.ebitdMarginTTM)) ebitMargin = m.ebitdMarginTTM / 100;
-        
+        else if (nz(m.netProfitMarginTTM)) ebitMargin = m.netProfitMarginTTM / 100;
         let equityRatio = null;
         if (nz(m.totalDebt2TotalEquityAnnual) && m.totalDebt2TotalEquityAnnual >= 0) equityRatio = 1 / (1 + m.totalDebt2TotalEquityAnnual);
         let pe = (nz(m.peTTM) && m.peTTM > 0 && m.peTTM < 2000) ? m.peTTM : null;
-        let pe5yAvg = (nz(m.peBasicExclExtraTTM) && m.peBasicExclExtraTTM > 0) ? m.peBasicExclExtraTTM : null;
+        let pe5yAvg = (nz(m.peBasicExclExtraTTM) && m.peBasicExclExtraTTM > 0) ? m.peBasicExclExtraTTM : pe;
         let analystBuyPct = null;
         if (Array.isArray(recs) && recs.length > 0) {
           const r = recs[0];
@@ -752,7 +811,10 @@
             return Object.assign({}, fallback, {
               _source:'fallback',
               _fallbackError:fallbackReason,
-              _fallbackType: classifyRuntimeError(fallbackReason).code
+              _fallbackType: classifyRuntimeError(fallbackReason).code,
+              _fallbackEndpoint: lastErr && lastErr._path ? lastErr._path : '',
+              _fallbackStatus: lastErr && Number.isFinite(lastErr._status) ? lastErr._status : null,
+              _fallbackDetail: lastErr && lastErr._url ? lastErr._url : ''
             });
           }
           throw lastErr || new Error('Unbekannter Finnhub-Fehler');
@@ -765,7 +827,7 @@
         controllers.forEach(ctrl => { try { ctrl.abort(); } catch {} });
         controllers.clear();
       }
-      return { fetchWithRetry, abortAll };
+      return { fetchWithRetry, abortAll, preflightCheck };
     })();
 
     const state = {
@@ -786,7 +848,8 @@
       reportFilter:'ALLE',
       stopRequested:false,
       analysisToken:0,
-      lastRunMode:'static'
+      lastRunMode:'static',
+      preflight:null
     };
 
     let renderQueued = false;
@@ -806,6 +869,9 @@
         message: source === 'live' ? 'Daten erfolgreich aus Finnhub geladen.' : source === 'fallback' ? 'Finnhub fehlgeschlagen, statische Fallback-Daten verwendet.' : 'Statischer Modus – lokale Datenbasis verwendet.',
         error: errorText,
         score: extra.score ?? null,
+        endpoint: extra.endpoint || '',
+        httpStatus: extra.httpStatus ?? null,
+        detail: extra.detail || '',
         reasonCode: extra.reasonCode || classification.code,
         reasonLabel: extra.reasonLabel || classification.label
       };
@@ -822,7 +888,27 @@
       const key = state.apiKey.trim();
       if(!key || state.running) return;
       const token = Date.now();
-      setState({ running:true, done:false, results:[], errors:[], logs:[], progress:0, curTicker:'', stopRequested:false, analysisToken:token, lastRunMode:'finnhub' });
+      setState({ running:true, done:false, results:[], errors:[], logs:[], progress:0, curTicker:'', stopRequested:false, analysisToken:token, lastRunMode:'finnhub', preflight:null });
+      const preflight = await FinnhubService.preflightCheck(key);
+      setState({ preflight, progress: preflight.ok ? 3 : 0 });
+      appendLog({
+        ts: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+        ticker: preflight.symbol || SELF_TEST_SYMBOL,
+        name:'API-Selbsttest',
+        source: preflight.ok ? 'live' : 'fallback',
+        message: preflight.ok ? 'API-Selbsttest erfolgreich.' : 'API-Selbsttest fehlgeschlagen. Vollscan wird nicht gestartet.',
+        error: preflight.ok ? '' : preflight.detail,
+        score:null,
+        endpoint: preflight.endpoint || '',
+        httpStatus: preflight.httpStatus ?? null,
+        detail: preflight.detail || '',
+        reasonCode: classifyRuntimeError(preflight.detail || '').code,
+        reasonLabel: classifyRuntimeError(preflight.detail || '').label
+      });
+      if(!preflight.ok){
+        setState({ running:false, done:true, curTicker:'', errors:[{ ticker: preflight.symbol || SELF_TEST_SYMBOL, error: preflight.detail || 'Preflight fehlgeschlagen' }], progress:0 });
+        return;
+      }
       const batch = STATIC_STOCK_DATA.slice(0, Math.min(state.count, STATIC_STOCK_DATA.length));
       const results = [];
       const errors = [];
@@ -841,10 +927,10 @@
           const stock = chunk[idx];
           if(entry.status === 'fulfilled'){
             batchResults.push(entry.value);
-            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore, reasonCode: entry.value._fallbackType || classifyRuntimeError(entry.value._fallbackError || '').code }));
+            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore, endpoint: entry.value._fallbackEndpoint || 'stock/metric + stock/recommendation + quote + stock/price-target', httpStatus: entry.value._source === 'fallback' ? (entry.value._fallbackStatus ?? null) : 200, detail: entry.value._fallbackDetail || '', reasonCode: entry.value._fallbackType || classifyRuntimeError(entry.value._fallbackError || '').code }));
           } else if (!(entry.reason && entry.reason.name === 'AbortError')) {
             batchErrors.push(Object.assign({}, stock, { error: entry.reason?.message || 'Fehler' }));
-            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null, reasonCode: classifyRuntimeError(entry.reason?.message || 'Fehler').code }));
+            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null, endpoint: entry.reason?._path || '', httpStatus: Number.isFinite(entry.reason?._status) ? entry.reason._status : null, detail: entry.reason?._url || '', reasonCode: classifyRuntimeError(entry.reason?.message || 'Fehler').code }));
           }
         });
         completed += chunk.length;
@@ -973,6 +1059,8 @@
             <span class="log-src ${sourceClass(entry.source)}">${escapeHtml(sourceLabel(entry.source))}</span>
           </div>
           <div class="log-error" style="color:var(--subtext)">${escapeHtml(entry.message)}</div>
+          ${entry.endpoint ? `<div class="log-error" style="color:var(--subtext)">Endpoint: ${escapeHtml(entry.endpoint)}${entry.httpStatus !== null && entry.httpStatus !== undefined ? ` · HTTP ${escapeHtml(entry.httpStatus)}` : ''}</div>` : ''}
+          ${entry.detail ? `<div class="log-error" style="color:var(--subtext)">Detail: ${escapeHtml(entry.detail)}</div>` : ''}
           ${entry.error ? `<div class="log-error">Grund: ${escapeHtml(entry.error)}</div>` : ''}
         </div>
       `).join('') : `<div class="placeholder-text">Noch kein Log vorhanden. Starte eine Analyse, damit Live- und Fallback-Quellen pro Aktie protokolliert werden.</div>`;
@@ -1098,6 +1186,22 @@
             </section>
           ` : ''}
 
+          ${state.mode === 'finnhub' ? `
+            <section class="card glass">
+              <div class="section-head">
+                <div>
+                  <div class="section-kicker">Connectivity Check</div>
+                  <div class="section-title">API-Selbsttest vor Vollscan</div>
+                  <div class="section-desc">Vor jedem Live-Scan testet Version 6.2.3 zuerst den Endpoint <span class="mono">quote?symbol=${SELF_TEST_SYMBOL}</span>. Bei Fehlern wird der Vollscan bewusst nicht gestartet und das Log zeigt Endpoint, HTTP-Status und Detail an.</div>
+                </div>
+                <div class="section-pills">
+                  <span class="section-pill">Self-Test ${escapeHtml(SELF_TEST_SYMBOL)}</span>
+                  <span class="section-pill">Endpoint-Logging aktiv</span>
+                </div>
+              </div>
+              ${state.preflight ? `<div class="note" style="margin-top:0">${state.preflight.ok ? '✅ API-Selbsttest erfolgreich' : '⚠️ API-Selbsttest fehlgeschlagen'} · Endpoint: ${escapeHtml(state.preflight.endpoint || '')}${state.preflight.httpStatus !== null && state.preflight.httpStatus !== undefined ? ` · HTTP ${escapeHtml(state.preflight.httpStatus)}` : ''}<br />${escapeHtml(state.preflight.detail || '')}</div>` : ''}
+            </section>
+          ` : ''}
           <section class="card glass">
             <div class="section-head">
               <div>
@@ -1257,7 +1361,7 @@
               <div class="headline">Top-30 <span class="accent">Screening</span></div>
               <div class="subtitle">${STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · statisch + Finnhub Live · Apple-/iOS-inspirierte Oberfläche mit Quellen-Log und Score-Drilldown · ${APP_VERSION}</div>
               <div class="quick-badges">
-                <span class="quick-badge">📱 inspiriertes UI</span>
+                <span class="quick-badge"> inspiriertes UI</span>
                 <span class="quick-badge">🪵 Quellen-Log</span>
                 <span class="quick-badge">📈 Score-Drilldown</span>
                 <span class="quick-badge">Version ${APP_VERSION}</span>
