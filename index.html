@@ -416,11 +416,20 @@
   "TM":"853510","SONY":"869712","SAP":"716460","VRTX":"A1JJB6",
 };
 
+    const APP_VERSION = '6.2.0';
+    const APP_RELEASE_DATE = '2026-06-02';
+    const ARCH_PROFILE = 'Single-File Client PWA · conservative Finnhub runtime';
     const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
-    const CONCURRENCY = 2;
-    const BATCH_DELAY_MS = 1200;
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 3000;
+    const CONCURRENCY = 1;              // Für Browser/PWA + Finnhub Free Plan konservativ stabiler
+    const BATCH_DELAY_MS = 3500;        // Längere Pause zwischen Titeln reduziert HTML-/WAF-/429-Antworten
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 3500;
+    const REQUEST_GAP_MS = 550;         // Pause zwischen den vier Endpunkten je Aktie
+    const HTML_RETRY_DELAYS_MS = [8000, 15000, 30000];
+    const RATE_LIMIT_RETRY_DELAYS_MS = [20000, 45000, 90000];
+    const NETWORK_RETRY_DELAYS_MS = [4000, 9000, 18000];
+    const PROVIDER_COOLDOWN_HTML_MS = 30000;
+    const PROVIDER_COOLDOWN_RATE_MS = 60000;
     const ACTIVE_CRITERIA = 12;
     const FINANCE_SECTORS = ["Finanzen", "Versicherung"];
     const EU_FLAGS = ["🇩🇪","🇫🇷","🇬🇧","🇨🇭","🇳🇱","🇮🇹","🇪🇸","🇫🇮","🇸🇪","🇩🇰","🇧🇪","🇦🇹","🇵🇹","🇳🇴"];
@@ -442,6 +451,21 @@
     const scoreFillColor = (score) => score >= 4 ? 'var(--green)' : score >= 0 ? 'var(--yellow)' : 'var(--red)';
     const recommendationIndex = (rec) => ['KAUFEN','HALTEN','VERKAUFEN'].indexOf(rec);
     const sourceLogLabel = (source) => source === 'live' ? 'Finnhub Live' : source === 'fallback' ? 'Statischer Fallback' : 'Statischer Modus';
+    function normalizeErrorText(errorText = '') {
+      const raw = String(errorText || '');
+      if (!raw) return '';
+      if (raw.includes('<!DOCTYPE html') || raw.includes('<html')) return 'HTML-Antwort statt JSON von Finnhub';
+      return raw;
+    }
+    function classifyRuntimeError(errorText = '') {
+      const raw = normalizeErrorText(errorText).toLowerCase();
+      if (!raw) return { code:'none', label:'Keine Fehler' };
+      if (raw.includes('html-antwort') || raw.includes('html statt json') || raw.includes('waf-antwort') || raw.includes('provider-/rate-limit')) return { code:'html', label:'HTML statt JSON' };
+      if (raw.includes('429') || raw.includes('rate limit')) return { code:'rate', label:'429 / Rate Limit' };
+      if (raw.includes('401') || raw.includes('403') || raw.includes('ungültig') || raw.includes('ungueltig') || raw.includes('api key')) return { code:'auth', label:'401/403 / Auth' };
+      if (raw.includes('netzwerk') || raw.includes('cors') || raw.includes('verbindung') || raw.includes('load failed')) return { code:'network', label:'Netzwerk / CORS' };
+      return { code:'other', label:'Sonstiges' };
+    }
 
     function regionMatch(stock, filter) {
       if (filter === 'Alle') return true;
@@ -580,10 +604,22 @@
       const removeController = (ctrl) => controllers.delete(ctrl);
       const buildUrl = (path, key) => `https://finnhub.io/api/v1/${path}&token=${encodeURIComponent(key)}`;
 
+      let providerCooldownUntil = 0;
+      async function waitForProviderCooldown() {
+        const waitMs = providerCooldownUntil - Date.now();
+        if (waitMs > 0) await sleep(waitMs);
+      }
+      function setProviderCooldown(ms) {
+        providerCooldownUntil = Math.max(providerCooldownUntil, Date.now() + ms);
+      }
+
       async function request(path, key, signal) {
         const url = buildUrl(path, key);
         const cached = CacheService.get(url);
         if (cached) return cached;
+
+        await waitForProviderCooldown();
+
         let resp;
         try {
           resp = await fetch(url, { method:'GET', mode:'cors', credentials:'omit', headers:{ 'Accept':'application/json' }, signal });
@@ -591,17 +627,22 @@
           if (err && err.name === 'AbortError') throw err;
           throw new Error(`Netzwerk: ${err.message} — CORS oder Verbindung. Key korrekt?`);
         }
+
         if (resp.status === 401 || resp.status === 403) throw new Error(`API Key ungültig (${resp.status}) — Key auf finnhub.io prüfen`);
-        if (resp.status === 429) throw new Error('Rate Limit (429) — 60 Sek. warten, dann erneut starten');
+        if (resp.status === 429) {
+          setProviderCooldown(PROVIDER_COOLDOWN_RATE_MS);
+          throw new Error('Rate Limit (429) — Finnhub verlangt Abkühlzeit. Statischer Fallback wird nach zusätzlichem Backoff verwendet, wenn keine Live-Antwort mehr kommt.');
+        }
         if (!resp.ok) throw new Error(`Finnhub HTTP ${resp.status}`);
+
         const raw = await resp.text();
         if (!raw || raw.trim() === '') { CacheService.set(url, {}); return {}; }
 
         const trimmed = raw.trim();
         const contentType = (resp.headers.get('content-type') || '').toLowerCase();
 
-        // Manche Provider-/WAF-/Rate-Limit-Antworten kommen als HTML statt JSON zurück.
         if (trimmed.startsWith('<!DOCTYPE html') || trimmed.startsWith('<html') || contentType.includes('text/html')) {
+          setProviderCooldown(PROVIDER_COOLDOWN_HTML_MS);
           throw new Error('Finnhub lieferte HTML statt JSON (Provider-/Rate-Limit-/WAF-Antwort). Statischer Fallback wird verwendet.');
         }
 
@@ -626,11 +667,11 @@
       async function fetchStock(stock, key, signal) {
         const t = stock.ticker;
         const metrics = await request(`stock/metric?symbol=${t}&metric=all`, key, signal);
-        await sleep(250);
+        await sleep(REQUEST_GAP_MS);
         const recs = await request(`recommendation?symbol=${t}`, key, signal);
-        await sleep(250);
+        await sleep(REQUEST_GAP_MS);
         const quote = await request(`quote?symbol=${t}`, key, signal);
-        await sleep(250);
+        await sleep(REQUEST_GAP_MS);
         const target = await request(`price-target?symbol=${t}`, key, signal);
 
         const m = (metrics && metrics.metric) || {};
@@ -678,17 +719,43 @@
         const signal = controller.signal;
         try {
           for (let i = 0; i <= MAX_RETRIES; i++) {
-            try { return await fetchStock(stock, key, signal); }
-            catch (err) {
+            try {
+              return await fetchStock(stock, key, signal);
+            } catch (err) {
               lastErr = err;
               if (err && err.name === 'AbortError') throw err;
-              const msg = String(err && err.message || err);
-              if (msg.includes('401') || msg.includes('403') || msg.includes('429') || msg.includes('ungültig')) throw err;
-              if (i < MAX_RETRIES) await sleep(RETRY_DELAY_MS * (i + 1));
+
+              const normalized = normalizeErrorText(err && err.message || err);
+              const classification = classifyRuntimeError(normalized);
+
+              // Auth-Fehler sind nicht recoverable im Client.
+              if (classification.code === 'auth') throw err;
+
+              let retryDelay = RETRY_DELAY_MS * (i + 1);
+              if (classification.code === 'html') {
+                retryDelay = HTML_RETRY_DELAYS_MS[Math.min(i, HTML_RETRY_DELAYS_MS.length - 1)];
+              } else if (classification.code === 'rate') {
+                retryDelay = RATE_LIMIT_RETRY_DELAYS_MS[Math.min(i, RATE_LIMIT_RETRY_DELAYS_MS.length - 1)];
+              } else if (classification.code === 'network') {
+                retryDelay = NETWORK_RETRY_DELAYS_MS[Math.min(i, NETWORK_RETRY_DELAYS_MS.length - 1)];
+              }
+
+              if (i < MAX_RETRIES) {
+                await sleep(retryDelay);
+                continue;
+              }
             }
           }
+
           const fallback = STATIC_STOCK_DATA.find(s => s.ticker === stock.ticker);
-          if (fallback) return Object.assign({}, fallback, { _source:'fallback', _fallbackError:lastErr ? String(lastErr.message || lastErr) : 'unbekannt' });
+          if (fallback) {
+            const fallbackReason = normalizeErrorText(lastErr ? String(lastErr.message || lastErr) : 'unbekannt');
+            return Object.assign({}, fallback, {
+              _source:'fallback',
+              _fallbackError:fallbackReason,
+              _fallbackType: classifyRuntimeError(fallbackReason).code
+            });
+          }
           throw lastErr || new Error('Unbekannter Finnhub-Fehler');
         } finally {
           removeController(controller);
@@ -705,7 +772,7 @@
     const state = {
       mode:'static',
       apiKey:'',
-      count:Math.min(50, STATIC_STOCK_DATA.length),
+      count:Math.min(25, STATIC_STOCK_DATA.length),
       running:false,
       results:[],
       errors:[],
@@ -730,10 +797,8 @@
     function enrichStatic(stock, source='static'){ return Object.assign({}, stock, calcScore(stock, stock.sector), { _source:source }); }
 
     function buildLogEntry(stock, source, extra = {}) {
-      let errorText = extra.error ? String(extra.error) : '';
-      if (errorText.includes('<!DOCTYPE html') || errorText.includes('<html')) {
-        errorText = 'HTML-Antwort statt JSON von Finnhub';
-      }
+      const errorText = normalizeErrorText(extra.error || '');
+      const classification = classifyRuntimeError(errorText);
       return {
         ts: new Date().toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
         ticker: stock.ticker,
@@ -741,7 +806,9 @@
         source,
         message: source === 'live' ? 'Daten erfolgreich aus Finnhub geladen.' : source === 'fallback' ? 'Finnhub fehlgeschlagen, statische Fallback-Daten verwendet.' : 'Statischer Modus – lokale Datenbasis verwendet.',
         error: errorText,
-        score: extra.score ?? null
+        score: extra.score ?? null,
+        reasonCode: extra.reasonCode || classification.code,
+        reasonLabel: extra.reasonLabel || classification.label
       };
     }
 
@@ -775,10 +842,10 @@
           const stock = chunk[idx];
           if(entry.status === 'fulfilled'){
             batchResults.push(entry.value);
-            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore }));
+            appendLog(buildLogEntry(stock, entry.value._source || 'live', { error: entry.value._fallbackError || '', score: entry.value.totalScore, reasonCode: entry.value._fallbackType || classifyRuntimeError(entry.value._fallbackError || '').code }));
           } else if (!(entry.reason && entry.reason.name === 'AbortError')) {
             batchErrors.push(Object.assign({}, stock, { error: entry.reason?.message || 'Fehler' }));
-            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null }));
+            appendLog(buildLogEntry(stock, 'fallback', { error: entry.reason?.message || 'Fehler', score:null, reasonCode: classifyRuntimeError(entry.reason?.message || 'Fehler').code }));
           }
         });
         completed += chunk.length;
@@ -832,6 +899,7 @@
                 <span class="hero-badge">🧠 ${ACTIVE_CRITERIA} aktive Kriterien</span>
                 <span class="hero-badge">🔎 Score-Klick = Kriterien-Drilldown</span>
                 <span class="hero-badge">🪵 Quellen-Log integriert</span>
+                <span class="hero-badge">🧾 Version ${APP_VERSION} · ${APP_RELEASE_DATE}</span>
               </div>
             </div>
             <div class="hero-metrics">
@@ -975,7 +1043,7 @@
                 ${expanded ? renderCriteriaPanel(stock) : ''}
               `;
             }).join('')}
-            <div class="footer-note">${state.lastRunMode === 'finnhub' ? 'Echte Finnhub-Daten bzw. transparenter Fallback' : 'Statische Datenbasis (~Anfang 2025)'} · Deterministisches Levermann-Scoring · 12 aktive Kriterien + 1 bewusst deaktiviert · Keine Anlageberatung</div>
+            <div class="footer-note">${state.lastRunMode === 'finnhub' ? 'Echte Finnhub-Daten bzw. transparenter Fallback' : 'Statische Datenbasis (~Anfang 2025)'} · Deterministisches Levermann-Scoring · 12 aktive Kriterien + 1 bewusst deaktiviert · Version ${APP_VERSION} · Keine Anlageberatung</div>
           </div>
           <div class="legend">
             <span class="legend-item"><span class="legend-box" style="background:var(--accent-glow);border-color:rgba(10,132,255,.18)"></span>statisch</span>
@@ -1041,6 +1109,7 @@
               <div class="section-pills">
                 <span class="section-pill">${state.mode === 'finnhub' ? 'Live-Scan' : 'Static-Scan'}</span>
                 <span class="section-pill">${ACTIVE_CRITERIA} Kriterien aktiv</span>
+                <span class="section-pill">Runtime ${APP_VERSION}</span>
               </div>
             </div>
             <div class="controls-head">
@@ -1053,7 +1122,7 @@
               <button class="btn-primary" data-action="run-analysis" ${(state.running || (state.mode === 'finnhub' && !state.apiKey.trim())) ? 'disabled' : ''}>${state.running ? `Analysiere... (${state.progress}%)` : state.done ? 'Erneut analysieren' : `${maxN} Aktien analysieren`}</button>
               ${state.running ? '<button class="btn-secondary" data-action="stop-analysis">Stop</button>' : ''}
             </div>
-            <div class="note">Neu: iOS-inspirierte Optik, Score-Klick zum Aufklappen der 13 Kriterien und ein Quellen-Log, das Finnhub-Live und statischen Fallback je Aktie nachvollziehbar macht – inklusive robuster Erkennung von HTML-Antworten statt JSON.</div>
+            <div class="note">Neu: iOS-inspirierte Optik mit konservativem Live-Profil für deine Single-File-/PWA-Architektur: CONCURRENCY=1, längere Batch-Pausen, globale Provider-Abkühlzeit und spezieller HTML-/Rate-Limit-Backoff vor dem finalen Fallback.</div>
           </section>
 
           ${state.running ? `
@@ -1067,7 +1136,7 @@
               </div>
               <div class="progress-top"><span class="progress-title">Analysiere: ${escapeHtml(state.curTicker || '…')}</span><span class="progress-pct">${state.progress}%</span></div>
               <div class="progress-bar"><div class="progress-fill" style="width:${state.progress}%"></div></div>
-              ${state.errors.length ? `<details><summary>${state.errors.length} Fehler</summary><div class="error-list">${state.errors.map(e => `${escapeHtml(e.ticker)}: ${escapeHtml((e.error && (String(e.error).includes('<!DOCTYPE html') || String(e.error).includes('<html'))) ? 'HTML-Antwort statt JSON von Finnhub' : e.error)}`).join(' | ')}</div></details>` : ''}
+              ${state.errors.length ? `<details><summary>${state.errors.length} Fehler</summary><div class="error-list">${state.errors.map(e => `${escapeHtml(e.ticker)}: ${escapeHtml(normalizeErrorText(e.error))}`).join(' | ')}</div></details>` : ''}
             </section>
           ` : ''}
 
@@ -1169,7 +1238,7 @@
                 <div style="text-align:center">${renderBadge(stock.recommendation)}</div>
               </div>
             `).join('')}
-            <div class="footer-note">${sorted.length} Aktien · ${new Date().toLocaleDateString('de-DE')} · Keine Anlageberatung · WKN ohne Gewähr</div>
+            <div class="footer-note">${sorted.length} Aktien · ${new Date().toLocaleDateString('de-DE')} · Version ${APP_VERSION} · Keine Anlageberatung · WKN ohne Gewähr</div>
           </div>
         </section>
       `;
@@ -1187,11 +1256,13 @@
             <div class="shell topbar-inner">
               <div class="eyebrow"><span class="eyebrow-dot"></span><span class="eyebrow-text">MSCI ACWI · Levermann iOS Edition</span></div>
               <div class="headline">Top-30 <span class="accent">Screening</span></div>
-              <div class="subtitle">${STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · statisch + Finnhub Live · Apple-/iOS-inspirierte Oberfläche mit Quellen-Log und Score-Drilldown</div>
+              <div class="subtitle">${STATIC_STOCK_DATA.length} Aktien · Deterministisches Scoring · statisch + Finnhub Live · Apple-/iOS-inspirierte Oberfläche mit Quellen-Log und Score-Drilldown · ${APP_VERSION}</div>
               <div class="quick-badges">
                 <span class="quick-badge"> inspiriertes UI</span>
                 <span class="quick-badge">🪵 Quellen-Log</span>
                 <span class="quick-badge">📈 Score-Drilldown</span>
+                <span class="quick-badge">Version ${APP_VERSION}</span>
+                <span class="quick-badge">${ARCH_PROFILE}</span>
               </div>
             </div>
           </header>
